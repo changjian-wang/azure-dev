@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -26,16 +27,21 @@ type analyzeOptions struct {
 	usage       bool
 	dryRun      bool
 	yes         bool
+	view        bool
 }
 
-func newAnalyzeCommand(extCtx *azdext.ExtensionContext, open sessionFactory) *cobra.Command {
+func newAnalyzeCommand(
+	extCtx *azdext.ExtensionContext, open sessionFactory, openViewer viewerFactory,
+) *cobra.Command {
 	options := &analyzeOptions{}
 	cmd := &cobra.Command{
 		Use: "analyze [INPUTS...]", Short: "Analyze local files, directories, or HTTPS URLs",
 		Long: "Analyze local files, directories, or HTTPS URLs using Microsoft Entra authentication.\n\n" +
 			"Uses prebuilt-layout when no analyzer is specified or configured.\n" +
 			"Results use YAML front matter and Markdown by default. Batches save source-relative result files.\n" +
-			"Use --output json for complete JSON, or --dry-run to inspect the plan without service calls.",
+			"Use --output json for complete JSON, or --dry-run to inspect the plan without service calls.\n" +
+			"Use --view for one local PDF or supported image. The browser uses the complete response, " +
+			"independently of output format; the local viewer runs until Ctrl+C.",
 		Example: `  azd ai cu analyze invoice.pdf
     Analyze one file using the configured analyzer, or prebuilt-layout if unset.
 
@@ -52,9 +58,12 @@ func newAnalyzeCommand(extCtx *azdext.ExtensionContext, open sessionFactory) *co
     Analyze matching PDF files recursively and preserve their relative paths.
 
   azd ai cu analyze invoice.pdf --llm-input --output-file invoice.md
-    Save YAML front matter and Markdown for generative AI model input.`,
+    Save YAML front matter and Markdown for generative AI model input.
+
+  azd ai cu analyze invoice.pdf --analyzer prebuilt-invoice --view
+    Analyze one local file and keep its browser viewer running until Ctrl+C.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return exterrors.FromError(runAnalyzeCommand(cmd, extCtx, open, options, args))
+			return exterrors.FromError(runAnalyzeCommand(cmd, extCtx, open, openViewer, options, args))
 		},
 	}
 	flags := cmd.Flags()
@@ -82,6 +91,8 @@ func newAnalyzeCommand(extCtx *azdext.ExtensionContext, open sessionFactory) *co
 	flags.BoolVarP(&options.yes, "yes", "y", false, "Confirm batches larger than 50 inputs without prompting")
 	flags.StringVar(&options.output.Report, "report-file", "", "Save a new cu-cli/analyze-report/v1 report; never overwrite")
 	flags.IntVarP(&options.concurrency, "concurrency", "j", 4, "Concurrent analyses (1-32)")
+	flags.BoolVar(&options.view, "view", false,
+		"Open one local PDF or supported image in the browser; keep the viewer running until Ctrl+C")
 	return azdext.RegisterFlagOptions(cmd, azdext.FlagOptions{
 		Name: "output", AllowedValues: []string{"default", "json", "none"},
 		Usage: "Output format: default (text for LLM input, otherwise JSON), json (complete response), or none",
@@ -89,8 +100,9 @@ func newAnalyzeCommand(extCtx *azdext.ExtensionContext, open sessionFactory) *co
 }
 
 func runAnalyzeCommand(
-	cmd *cobra.Command, extCtx *azdext.ExtensionContext, open sessionFactory, options *analyzeOptions, args []string,
-) error {
+	cmd *cobra.Command, extCtx *azdext.ExtensionContext, open sessionFactory, openViewer viewerFactory,
+	options *analyzeOptions, args []string,
+) (resultErr error) {
 	ctx := cmd.Context()
 	if err := ctx.Err(); err != nil {
 		return err
@@ -106,6 +118,11 @@ func runAnalyzeCommand(
 	if options.dryRun && options.yes {
 		return commandError("dry_run_confirmation",
 			"--dry-run cannot be combined with --yes.", "Remove --yes when planning.")
+	}
+	if options.view && options.dryRun {
+		return commandError(exterrors.CodeConflictingArguments,
+			"--view cannot be combined with --dry-run because no analysis result is produced.",
+			"Omit --view when planning, or omit --dry-run to analyze and view.")
 	}
 	if options.concurrency < 1 || options.concurrency > 32 {
 		return commandError("invalid_concurrency", "--concurrency must be between 1 and 32.", "Use -j 1 through -j 32.")
@@ -132,7 +149,11 @@ func runAnalyzeCommand(
 			options.output.Existing = "error"
 		}
 	}
-	inputs, err := analysis.Discover(ctx, options.input)
+	discover := analysis.Discover
+	if options.view {
+		discover = discoverViewerInput
+	}
+	inputs, err := discover(ctx, options.input)
 	if err != nil {
 		return err
 	}
@@ -142,6 +163,19 @@ func runAnalyzeCommand(
 	}
 	if err := ctx.Err(); err != nil {
 		return err
+	}
+	var view analyzeViewer
+	if options.view {
+		if plan.Outputs[0].Skipped {
+			return commandError(exterrors.CodeConflictingArguments,
+				"--view cannot display a new result when --on-existing skip skips this analysis.",
+				"Choose a new output path, use --on-existing reanalyze, or omit --view.")
+		}
+		view, err = openViewer(ctx, inputs[0], cmd.ErrOrStderr())
+		if err != nil {
+			return err
+		}
+		defer func() { resultErr = errors.Join(resultErr, view.Close()) }()
 	}
 	if !options.dryRun && len(inputs) > 50 && !options.yes && extCtx.NoPrompt {
 		return commandError("confirmation_required", "Analyzing more than 50 inputs requires cost confirmation.",
@@ -184,21 +218,27 @@ func runAnalyzeCommand(
 	}
 	execution, err := analysis.Execute(ctx, session.client, plan, analysis.RunOptions{
 		Analyzer: session.analyzer, Mode: mode, Concurrency: options.concurrency, Usage: options.usage,
+		CaptureResponse: options.view,
 	})
 	if err != nil {
 		return err
 	}
-	if execution.Stream != nil {
-		if text, ok := execution.Stream.(string); ok && extCtx.OutputFormat == "default" {
-			if err := ctx.Err(); err != nil {
-				return err
-			}
-			if _, err := fmt.Fprintln(cmd.OutOrStdout(), text); err != nil {
-				return fmt.Errorf("write CU result: %w", err)
-			}
-			return nil
-		}
-		return writeServiceResult(cmd, extCtx.OutputFormat, execution.Stream)
+	payload := execution.Stream
+	if payload == nil {
+		payload = execution.Records
 	}
-	return writeServiceResult(cmd, extCtx.OutputFormat, execution.Records)
+	if text, ok := payload.(string); ok && extCtx.OutputFormat == "default" {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintln(cmd.OutOrStdout(), text); err != nil {
+			return fmt.Errorf("write CU result: %w", err)
+		}
+	} else if err := writeServiceResult(cmd, extCtx.OutputFormat, payload); err != nil {
+		return err
+	}
+	if view != nil {
+		return view.Show(ctx, execution.Response)
+	}
+	return nil
 }

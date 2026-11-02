@@ -15,6 +15,42 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestExecutionCapturesCompleteResponseIndependentlyOfView(t *testing.T) {
+	for _, llm := range []bool{false, true} {
+		for _, capture := range []bool{false, true} {
+			t.Run(fmt.Sprintf("llm=%t/capture=%t", llm, capture), func(t *testing.T) {
+				inputs := discoverFiles(t, "invoice.pdf")
+				plan, err := PlanOutputs(inputs, OutputOptions{Existing: "error", LLMInput: llm})
+				require.NoError(t, err)
+				options := runOptions()
+				options.Usage = false
+				options.CaptureResponse = capture
+				result, err := Execute(t.Context(), successfulClient(), plan, options)
+				require.NoError(t, err)
+				if capture {
+					require.Equal(t, json.RawMessage(terminal), result.Response)
+				} else {
+					require.Nil(t, result.Response)
+				}
+				if llm {
+					require.IsType(t, "", result.Stream)
+				} else {
+					body, err := json.Marshal(result.Stream)
+					require.NoError(t, err)
+					require.JSONEq(t, terminal, string(body))
+				}
+			})
+		}
+	}
+	inputs := discoverFiles(t, "first.pdf", "second.pdf")
+	plan, err := PlanOutputs(inputs, OutputOptions{Existing: "error"})
+	require.NoError(t, err)
+	options := runOptions()
+	options.CaptureResponse = true
+	_, err = Execute(t.Context(), successfulClient(), plan, options)
+	requireCode(t, err, "invalid_response_capture")
+}
+
 func TestExecutionInputModeAndUsageContracts(t *testing.T) {
 	for _, mode := range []cuclient.AnalysisMode{cuclient.AnalysisModeAsync, cuclient.AnalysisModeInline} {
 		for _, remote := range []bool{false, true} {
@@ -27,6 +63,7 @@ func TestExecutionInputModeAndUsageContracts(t *testing.T) {
 						inputs, err = Discover(t.Context(), InputOptions{URLs: []string{url}})
 						require.NoError(t, err)
 					}
+
 					plan, err := PlanOutputs(inputs, OutputOptions{Existing: "error"})
 					require.NoError(t, err)
 					calls := 0

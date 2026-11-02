@@ -1,2 +1,4 @@
 internal/infra/assets/** text eol=lf
+internal/viewer/resources/viewer/manifest.json text eol=lf
+internal/viewer/resources/viewer/viewer.zip binary
 **/testdata/** text eol=lf

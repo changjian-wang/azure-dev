@@ -41,6 +41,19 @@ overrides:
   - filename: "internal/exterrors/redact.go"
     words:
       - accountkey
+  - filename: "internal/viewer/source*.go"
+    words:
+      - ftyp
+      - heix
+      - hevx
+      - heim
+      - heis
+  - filename: "internal/viewer/viewer.go"
+    words:
+      - nosniff
+  - filename: "internal/viewer/README.md"
+    words:
+      - changjian
   - filename: "internal/infra/templates.go"
     words:
       - australiaeast

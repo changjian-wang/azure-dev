@@ -70,7 +70,11 @@ func newAnalyzeFixture(t *testing.T) *analyzeFixture {
 }
 
 func (f *analyzeFixture) root() *cobra.Command {
-	return newRootCommand(func(
+	return f.rootWithViewer(prepareViewer)
+}
+
+func (f *analyzeFixture) rootWithViewer(openViewer viewerFactory) *cobra.Command {
+	return newRootCommandWithViewer(func(
 		_ *cobra.Command, _ *azdext.ExtensionContext, options config.Options,
 	) (*serviceSession, error) {
 		f.opens++
@@ -97,7 +101,7 @@ func (f *analyzeFixture) root() *cobra.Command {
 				return f.confirmed, f.promptErr
 			},
 		}, nil
-	})
+	}, openInfraHost, openViewer)
 }
 
 func (f *analyzeFixture) execute(ctx context.Context, args ...string) (string, string, error) {
@@ -485,7 +489,7 @@ func TestAnalyzeHelpAndMetadataRemainOffline(t *testing.T) {
 		} else {
 			for _, flag := range []string{"--file", "--source", "--url", "--pattern", "--recursive", "--analyzer",
 				"--inline", "--usage", "--llm-input", "--output-file", "--output-dir", "--on-existing",
-				"--dry-run", "--yes", "--report-file", "--concurrency"} {
+				"--dry-run", "--yes", "--report-file", "--concurrency", "--view"} {
 				assert.Contains(t, stdout.String(), flag)
 			}
 		}

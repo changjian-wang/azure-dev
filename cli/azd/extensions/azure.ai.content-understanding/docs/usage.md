@@ -183,6 +183,41 @@ configuration. Select inputs using one mode: positional inputs, `--file`,
   failures or cancellation return nonzero while retaining completed result
   files and the requested report. Reports never overwrite existing files.
 
+### View a local analysis in the browser
+
+Use `--view` to display one local source and the complete response from the same
+analysis in the embedded CU Viewer:
+
+```powershell name="Analyze and view an invoice"
+azd ai cu analyze sample_invoice.pdf --analyzer prebuilt-invoice --view
+```
+
+- Sources must be one local PDF, PNG, JPEG, BMP, HEIF, or HEIC file, selected
+  positionally or with `--file`. AVIF and HEIF image sequences are not supported.
+- `--view` does not require `--output json`. It always receives the complete
+  response, including unknown fields and exact JSON numbers, while console and
+  saved-file output continue to follow their existing options.
+- `--output none` suppresses result output, not the explicitly requested viewer.
+  The local address and exit instructions go to diagnostic output, not result
+  JSON. `--no-prompt` likewise does not disable an explicit `--view`.
+- Batch, directory, URL, `--source`, `--pattern`, `--recursive`, and `--dry-run`
+  combinations are rejected before authentication or CU calls. An existing
+  result that would be skipped by `--on-existing skip` is also rejected; choose
+  a new output path or explicitly use `--on-existing reanalyze`.
+- The source type, embedded resources, and loopback port are checked before
+  analysis. After success, the default browser opens an isolated session on
+  `127.0.0.1` using a system-assigned port. Only embedded resources and the
+  selected source are served; the working directory is not exposed.
+- The command stays in the foreground until `Ctrl+C`. Closing a tab does not
+  stop the service. Cancellation releases the listener, connections, and source
+  handle. Viewer startup failures return an error without reanalyzing or removing
+  completed result files.
+
+The extension contains its Viewer resources; ordinary Go builds and installed
+use need neither Node.js nor Python and never download Viewer assets. The
+Viewer is read-only and makes no additional Azure calls. Omit `--view` (or use
+`--view=false`) to retain ordinary analysis without the local service.
+
 ## Create a custom analyzer
 
 Custom analyzers require supported model deployments and configured Content
@@ -489,6 +524,11 @@ azd ai cu --help
 registry, not the public registry. Subsequent `azd x build` or `azd x watch`
 runs rebuild and reinstall the extension without repeating the initial
 packaging and registration steps.
+
+The embedded Viewer archive, provenance, and explicit resource-update procedure
+are described in [the Viewer package](../internal/viewer/README.md). Resource
+updates are separate from ordinary Go builds and must commit the archive and
+manifest together.
 
 Tests live
 beside their Go packages under [internal/](../internal/), including command,

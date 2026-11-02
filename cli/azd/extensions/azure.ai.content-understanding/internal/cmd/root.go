@@ -17,6 +17,12 @@ func newRootCommand(open sessionFactory) *cobra.Command {
 }
 
 func newRootCommandWithInfra(open sessionFactory, infraOpen infraHostFactory) *cobra.Command {
+	return newRootCommandWithViewer(open, infraOpen, prepareViewer)
+}
+
+func newRootCommandWithViewer(
+	open sessionFactory, infraOpen infraHostFactory, openViewer viewerFactory,
+) *cobra.Command {
 	rootCmd, extCtx := azdext.NewExtensionRootCommand(azdext.ExtensionCommandOptions{
 		Name:    "cu",
 		Use:     "cu <command> [options]",
@@ -37,7 +43,7 @@ func newRootCommandWithInfra(open sessionFactory, infraOpen infraHostFactory) *c
 	rootCmd.AddCommand(newVersionCommand(&extCtx.OutputFormat))
 	rootCmd.AddCommand(newMetadataCommand(rootCmd))
 	rootCmd.AddCommand(newAnalyzerCommand(extCtx, open))
-	rootCmd.AddCommand(newAnalyzeCommand(extCtx, open))
+	rootCmd.AddCommand(newAnalyzeCommand(extCtx, open, openViewer))
 	rootCmd.AddCommand(newDefaultsCommand(extCtx, open))
 	rootCmd.AddCommand(newDoctorCommand(extCtx, open))
 	rootCmd.AddCommand(newConfigCommand(extCtx))

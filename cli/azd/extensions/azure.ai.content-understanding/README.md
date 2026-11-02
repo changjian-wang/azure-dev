@@ -199,6 +199,19 @@ azd ai cu analyze invoice.pdf --analyzer prebuilt-invoice
 azd ai cu analyze invoice.pdf -a prebuilt-invoice --output json --output-file invoice.result.json
 ```
 
+To display one local PDF or supported image beside its complete analysis result,
+add `--view`:
+
+```powershell name="Analyze and view a local invoice"
+azd ai cu analyze invoice.pdf --analyzer prebuilt-invoice --view
+```
+
+The embedded Viewer needs no Node.js or Python at runtime. The command keeps a
+loopback-only service running until `Ctrl+C`; closing the browser tab does not
+stop it. Viewing does not change console or saved-result formats or make another
+CU request. See [local viewing](docs/usage.md#view-a-local-analysis-in-the-browser)
+for supported sources and incompatible options.
+
 In the saved response, structured fields are in each content entry's `fields`
 object under `result.contents`, for example `result.contents[0].fields`.
 See [document elements](https://learn.microsoft.com/azure/ai-services/content-understanding/document/elements)

@@ -19,10 +19,11 @@ import (
 )
 
 type RunOptions struct {
-	Analyzer    string
-	Mode        cuclient.AnalysisMode
-	Concurrency int
-	Usage       bool
+	Analyzer        string
+	Mode            cuclient.AnalysisMode
+	Concurrency     int
+	Usage           bool
+	CaptureResponse bool
 }
 
 type Record struct {
@@ -36,15 +37,17 @@ type Record struct {
 }
 
 type Execution struct {
-	Records []Record
-	Stream  any
+	Records  []Record
+	Stream   any
+	Response json.RawMessage
 }
 
 type outcome struct {
-	index   int
-	payload any
-	usage   json.RawMessage
-	err     error
+	index    int
+	payload  any
+	usage    json.RawMessage
+	response json.RawMessage
+	err      error
 }
 
 type reportRecord struct {
@@ -78,6 +81,9 @@ func Execute(ctx context.Context, client cuclient.Client, plan Plan, options Run
 	}
 	if len(plan.Outputs) == 0 {
 		return Execution{}, invalid("empty_inputs", "Select at least one analysis input.")
+	}
+	if options.CaptureResponse && len(plan.Outputs) != 1 {
+		return Execution{}, invalid("invalid_response_capture", "Complete response capture requires exactly one input.")
 	}
 	if err := cuclient.ValidateAnalyzerID(options.Analyzer); err != nil {
 		return Execution{}, err
@@ -136,6 +142,9 @@ func Execute(ctx context.Context, client cuclient.Client, plan Plan, options Run
 			}
 		}
 		record.Status, record.Error, record.Analyzer = "succeeded", "", options.Analyzer
+		if options.CaptureResponse {
+			result.Response = item.response
+		}
 		record.Usage = json.RawMessage("null")
 		if options.Usage {
 			record.Usage = item.usage
@@ -184,9 +193,12 @@ func analyzeInputs(
 					return
 				}
 				index := jobs[position]
-				payload, usage, err := analyzeOne(ctx, client, inputs[index], llm, options)
+				payload, usage, response, err := analyzeOne(ctx, client, inputs[index], llm, options)
+				if !options.CaptureResponse {
+					response = nil
+				}
 				// Drain all started jobs before closing the service session, including on cancellation.
-				completed <- outcome{index: index, payload: payload, usage: usage, err: err}
+				completed <- outcome{index: index, payload: payload, usage: usage, response: response, err: err}
 			}
 		})
 	}
@@ -199,19 +211,19 @@ func analyzeInputs(
 
 func analyzeOne(
 	ctx context.Context, client cuclient.Client, input Input, llm bool, options RunOptions,
-) (any, json.RawMessage, error) {
+) (any, json.RawMessage, json.RawMessage, error) {
 	request := cuclient.AnalyzeRequest{
 		AnalyzerID: options.Analyzer, Mode: options.Mode, Input: cuclient.Input{URL: input.URL},
 	}
 	var file *os.File
 	if err := ctx.Err(); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	if input.Path != "" {
 		var err error
 		file, err = input.Open()
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		request.Input.Body, request.Input.ContentType = file, "application/octet-stream"
 	}
@@ -224,28 +236,28 @@ func analyzeOne(
 		err = errors.Join(err, file.Close())
 	}
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	var envelope map[string]json.RawMessage
 	if err := json.Unmarshal(response.JSON, &envelope); err != nil || envelope == nil {
-		return nil, nil, invalidAnalysisResponse()
+		return nil, nil, nil, invalidAnalysisResponse()
 	}
 	if nested := bytes.TrimSpace(envelope["result"]); len(nested) == 0 || nested[0] != '{' {
-		return nil, nil, invalidAnalysisResponse()
+		return nil, nil, nil, invalidAnalysisResponse()
 	}
 	usage := envelope["usage"]
 	if len(usage) == 0 {
 		var err error
 		usage, err = json.Marshal(response.Usage)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 	}
 	if llm {
 		text, err := RenderLLM(envelope["result"])
-		return text, usage, err
+		return text, usage, response.JSON, err
 	}
-	return response.JSON, usage, nil
+	return response.JSON, usage, response.JSON, nil
 }
 
 func invalidAnalysisResponse() error {

@@ -11,4 +11,13 @@ const (
 	CodeCancelled              = "canceled"
 	CodeDeadlineExceeded       = "deadline_exceeded"
 	CodeUnexpected             = "cu_unexpected_error"
+	CodeConflictingArguments   = "conflicting_arguments"
+	CodeViewerSourceInvalid    = "viewer_source_invalid"
+	CodeViewerAssetsInvalid    = "viewer_assets_invalid"
+	CodeViewerListenFailed     = "viewer_listen_failed"
+	CodeViewerResultInvalid    = "viewer_result_invalid"
+	CodeViewerBrowserFailed    = "viewer_browser_failed"
+	CodeViewerServeFailed      = "viewer_serve_failed"
+	CodeViewerOutputFailed     = "viewer_output_failed"
+	CodeViewerCloseFailed      = "viewer_close_failed"
 )

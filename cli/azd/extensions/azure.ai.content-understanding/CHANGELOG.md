@@ -2,6 +2,8 @@
 
 ## 0.1.0-preview (Unreleased)
 
+- View one analyzed local PDF or supported image in the embedded browser Viewer
+  with `azd ai cu analyze --view`, without changing existing result output.
 - Initial preview of Azure Content Understanding commands under `azd ai cu`,
   using Azure Developer CLI sign-in and environments.
 - Analyze documents and media from local files or URLs, including batch
