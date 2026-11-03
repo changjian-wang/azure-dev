@@ -93,10 +93,31 @@ The Viewer repository no longer ships a Python host package/API. Each native CLI
 owns download/cache/local serving and lifecycle in its own repository. Removing that
 package does not implement or migrate the Python/C# CLI hosts.
 
-Source commit/push is authorized separately from resource publication and
-installed-extension replacement. No GitHub Release was published, and the
-repository currently has none. Therefore a cold
-public-source request correctly reports that no compatible release is available
-until the first resource release is published. Success/offline/error flows are
-verified using local HTTP release fixtures, including an actual 225-file build;
-that is not a claim that public downloads are already operational.
+The first public resource prerelease is
+[v0.1.0-preview.1](https://github.com/changjian-wang/cu-viewer/releases/tag/v0.1.0-preview.1),
+from Viewer source `9b1667703502ff6dd3035c644a7b4377fb6ac054`, with 225 production
+files, schema 2 and protocol 1. Its public ZIP and manifest downloads were
+independently verified against the built candidate. It uses the committed UI;
+the detached single-toolbar preview is not included.
+
+Source push, resource publication and local extension replacement have separate
+authorization boundaries. The initial local rollout authorized publication and
+CU-only replacement after backup; azd and the developer extension were unchanged.
+Local HTTP fixtures continue to cover offline/integrity/error paths. Actual
+public first-use still requires GitHub availability and anonymous API quota;
+HTTP errors must abort before analysis, not trigger reanalysis or unverified
+cache population.
+
+The real installed-host rollout completed after an anonymous API limit reset:
+public cold download/cache validation, one successful single-page invoice
+analysis with 31 fields, original saved-JSON/session equality and original-PDF
+byte equality, then real browser field selection, source highlight, 150% zoom
+and original Result view. Explicit resource update also succeeded without
+changing the active resource pointer or repeating analysis. Only the CU
+extension was replaced; azd and the developer extension retained their hashes.
+
+The foreground command's redirected console files had not flushed during the
+live session, so saved output and HTTP/browser data were checked independently;
+this does not claim that a redirected stdout stream had already completed.
+Local session URLs, Azure credentials and analysis results are not published
+as part of the Viewer resources or these source notes.
