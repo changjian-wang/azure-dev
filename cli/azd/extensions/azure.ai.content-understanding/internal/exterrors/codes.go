@@ -14,6 +14,8 @@ const (
 	CodeConflictingArguments   = "conflicting_arguments"
 	CodeViewerSourceInvalid    = "viewer_source_invalid"
 	CodeViewerAssetsInvalid    = "viewer_assets_invalid"
+	CodeViewerUnavailable      = "viewer_unavailable"
+	CodeViewerCacheFailed      = "viewer_cache_failed"
 	CodeViewerListenFailed     = "viewer_listen_failed"
 	CodeViewerResultInvalid    = "viewer_result_invalid"
 	CodeViewerBrowserFailed    = "viewer_browser_failed"

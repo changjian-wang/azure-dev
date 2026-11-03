@@ -64,7 +64,19 @@ func MakeExecutable(path string) (err error) {
 
 // Read reads one existing regular UTF-8/state file through the same anchored directory rules as Write.
 func Read(path string) (body []byte, err error) {
+	body, err = ReadBytes(path, 8*1024*1024)
+	if err == nil && !utf8.Valid(body) {
+		return nil, fmt.Errorf("state must be bounded UTF-8 text")
+	}
+	return body, err
+}
+
+// ReadBytes reads a bounded regular binary file using the same private anchored rules as Write.
+func ReadBytes(path string, limit int64) (body []byte, err error) {
 	defer protectError(&err)
+	if limit <= 0 || limit > 1<<40 {
+		return nil, fmt.Errorf("a finite positive file size limit is required")
+	}
 	parent, err := openDirectory(filepath.Dir(path), false)
 	if err != nil {
 		return nil, err
@@ -89,12 +101,12 @@ func Read(path string) (body []byte, err error) {
 	if err != nil || !os.SameFile(info, actual) {
 		return nil, fmt.Errorf("state changed while opening")
 	}
-	body, err = io.ReadAll(io.LimitReader(file, 8*1024*1024+1))
+	body, err = io.ReadAll(io.LimitReader(file, limit+1))
 	if err != nil {
 		return nil, err
 	}
-	if len(body) > 8*1024*1024 || !utf8.Valid(body) {
-		return nil, fmt.Errorf("state must be bounded UTF-8 text")
+	if int64(len(body)) > limit {
+		return nil, fmt.Errorf("state exceeds its file size limit")
 	}
 	return body, nil
 }

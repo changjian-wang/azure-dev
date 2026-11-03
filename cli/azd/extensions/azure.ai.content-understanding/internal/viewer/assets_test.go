@@ -17,8 +17,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestEmbeddedAssetsContainProductionPageAndCodecs(t *testing.T) {
-	assets, err := embeddedAssets()
+func TestResourceArchiveContainsPageAndCodecs(t *testing.T) {
+	archive, manifest := assetFixture(t, map[string][]byte{
+		"index.html":     []byte(`<div id="root"></div><script src="./assets/main.js"></script>`),
+		"assets/main.js": []byte("viewer"), "LICENSE.txt": []byte("MIT"),
+		"THIRD-PARTY-NOTICES.txt": []byte("notices"), "assets/pdf.worker.mjs": []byte("worker"),
+		"assets/heif.wasm": {0, 'a', 's', 'm'},
+	})
+	assets, err := readAssets(archive, manifest)
 	require.NoError(t, err)
 	page := string(assets["index.html"])
 	assert.Contains(t, page, `<div id="root"></div>`)

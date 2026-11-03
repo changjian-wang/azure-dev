@@ -238,7 +238,15 @@ func runAnalyzeCommand(
 		return err
 	}
 	if view != nil {
-		return view.Show(ctx, execution.Response)
+		err := view.Show(ctx, execution.Response)
+		if err != nil && ctx.Err() == nil {
+			_, diagnosticErr := fmt.Fprintln(cmd.ErrOrStderr(),
+				"Analysis completed, but CU Viewer could not be opened. Existing output and saved files were retained.")
+			if diagnosticErr != nil {
+				return errors.Join(err, fmt.Errorf("write viewer failure status: %w", diagnosticErr))
+			}
+		}
+		return err
 	}
 	return nil
 }

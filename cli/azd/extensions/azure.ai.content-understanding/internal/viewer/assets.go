@@ -7,7 +7,6 @@ import (
 	"archive/zip"
 	"bytes"
 	"crypto/sha256"
-	_ "embed"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -15,18 +14,8 @@ import (
 	"io"
 	"io/fs"
 	"math"
-	"sync"
+	"strings"
 )
-
-//go:embed resources/viewer/viewer.zip
-var resourceArchive []byte
-
-//go:embed resources/viewer/manifest.json
-var resourceManifest []byte
-
-var embeddedAssets = sync.OnceValues(func() (map[string][]byte, error) {
-	return readAssets(resourceArchive, resourceManifest)
-})
 
 type resourceRecord struct {
 	Path   string `json:"path"`
@@ -34,16 +23,20 @@ type resourceRecord struct {
 	SHA256 string `json:"sha256"`
 }
 
+type resourceDocument struct {
+	SchemaVersion   int              `json:"schemaVersion"`
+	ViewerVersion   string           `json:"viewerVersion"`
+	ProtocolVersion int              `json:"protocolVersion"`
+	Archive         resourceRecord   `json:"archive"`
+	Files           []resourceRecord `json:"files"`
+}
+
 func readAssets(archive, manifest []byte) (map[string][]byte, error) {
-	var document struct {
-		SchemaVersion int              `json:"schemaVersion"`
-		Archive       resourceRecord   `json:"archive"`
-		Files         []resourceRecord `json:"files"`
-	}
+	var document resourceDocument
 	if err := json.Unmarshal(manifest, &document); err != nil {
 		return nil, fmt.Errorf("decode viewer resource manifest: %w", err)
 	}
-	if document.SchemaVersion != 2 || document.Archive.Path != "viewer.zip" ||
+	if len(archive) > maxArchiveBytes || document.SchemaVersion != 2 || document.Archive.Path != "viewer.zip" ||
 		!matchesResource(archive, document.Archive) {
 		return nil, errors.New("invalid viewer resource archive")
 	}
@@ -51,12 +44,15 @@ func readAssets(archive, manifest []byte) (map[string][]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open viewer resource archive: %w", err)
 	}
-	if len(reader.File) != len(document.Files) {
+	if len(reader.File) != len(document.Files) || len(reader.File) > 4096 {
 		return nil, errors.New("viewer resource count does not match the manifest")
 	}
 	records := make(map[string]resourceRecord, len(document.Files))
+	var expanded int64
 	for _, record := range document.Files {
-		if !fs.ValidPath(record.Path) || record.Path == "." || record.Bytes < 0 ||
+		expanded += record.Bytes
+		if !fs.ValidPath(record.Path) || record.Path == "." || strings.Contains(record.Path, "\\") ||
+			record.Bytes < 0 || record.Bytes > maxArchiveBytes || expanded > 128*1024*1024 ||
 			record.Path == "session.json" || record.Path == "source" {
 			return nil, errors.New("invalid viewer resource path")
 		}

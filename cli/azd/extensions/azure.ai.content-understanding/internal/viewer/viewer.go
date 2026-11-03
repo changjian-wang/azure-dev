@@ -56,17 +56,31 @@ func Prepare(ctx context.Context, input analysis.Input, output io.Writer) (*Sess
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	assets, err := embeddedAssets()
-	if err != nil {
-		return nil, localError(exterrors.CodeViewerAssetsInvalid,
-			"The embedded CU Viewer resources are invalid.", "Reinstall the extension from its original source.")
-	}
-	return prepare(ctx, input, output, assets)
+	return prepareWithResources(ctx, input, output, func() (map[string][]byte, error) {
+		resolver, err := newResourceResolver()
+		if err != nil {
+			return nil, err
+		}
+		snapshot, err := resolver.resolve(ctx, output, false)
+		if err != nil {
+			return nil, err
+		}
+		return snapshot.assets, nil
+	})
 }
 
 func prepare(
 	ctx context.Context, input analysis.Input, output io.Writer, assets map[string][]byte,
 ) (_ *Session, resultErr error) {
+	return prepareWithResources(ctx, input, output, func() (map[string][]byte, error) { return assets, nil })
+}
+
+func prepareWithResources(
+	ctx context.Context, input analysis.Input, output io.Writer, load func() (map[string][]byte, error),
+) (_ *Session, resultErr error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	file, err := input.Open()
 	if err != nil {
 		return nil, err
@@ -91,6 +105,21 @@ func prepare(
 			Message:    "--view requires a local PDF, PNG, JPEG, BMP, HEIF, or HEIC file.",
 			Suggestion: "Use a supported source, or omit --view. AVIF and HEIF image sequences are not supported.",
 		}
+	}
+	assets, err := load()
+	if err != nil {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		if failure, ok := errors.AsType[*azdext.LocalError](err); ok {
+			detail := *failure
+			detail.Message = "CU Viewer could not be prepared; no analysis was started. " + failure.Message
+			return nil, &detail
+		}
+		return nil, err
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
 	listener, err := (&net.ListenConfig{}).Listen(ctx, "tcp4", "127.0.0.1:0")
 	if err != nil {

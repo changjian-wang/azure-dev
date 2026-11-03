@@ -14,6 +14,7 @@ Available Commands
   env-var  : Inspect supported compatibility process variables safely
   infra    : Generate infrastructure and complete azd-managed provisioning
   version  : Display the extension version
+  viewer   : Manage locally cached CU Viewer resources
 
 Flags
   -v, --version : version for cu

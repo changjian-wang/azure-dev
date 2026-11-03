@@ -275,7 +275,10 @@ func TestAnalyzeViewClosesOnFailuresAndRetainsCompletedResults(t *testing.T) {
 				require.True(t, ok)
 				assert.Equal(t, exterrors.CodeCancelled, local.Code)
 			}
-			if stage != "close" {
+			if stage == "show" {
+				assert.Contains(t, stderr, "Analysis completed, but CU Viewer could not be opened.")
+				assert.Contains(t, stderr, "saved files were retained")
+			} else if stage != "close" {
 				assert.Empty(t, stderr)
 			}
 		})

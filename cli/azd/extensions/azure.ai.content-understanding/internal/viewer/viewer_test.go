@@ -28,7 +28,10 @@ const viewerResponse = `{"status":"Succeeded","result":{"contents":[]},"future":
 func testSession(t *testing.T, output io.Writer) *Session {
 	t.Helper()
 	input := localInput(t, "invoice with spaces.pdf", []byte("%PDF-1.7\nsource bytes"))
-	session, err := Prepare(t.Context(), input, output)
+	session, err := prepare(t.Context(), input, output, map[string][]byte{
+		"index.html": []byte(`<div id="root"></div>`), "LICENSE.txt": []byte("MIT"),
+		"assets/pdf.worker.mjs": []byte("worker"), "assets/heif.wasm": {0, 'a', 's', 'm'},
+	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, session.Close()) })
 	return session

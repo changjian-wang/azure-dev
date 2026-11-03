@@ -206,7 +206,11 @@ add `--view`:
 azd ai cu analyze invoice.pdf --analyzer prebuilt-invoice --view
 ```
 
-The embedded Viewer needs no Node.js or Python at runtime. The command keeps a
+The runtime Viewer needs no Node.js, Python, or gh. First use downloads and
+validates a compatible published resource release; a verified cache works
+offline without checking for updates. Explicitly prepare or update it with
+`azd ai cu viewer update`. Resource preparation failures stop before analysis
+or browser startup. The command keeps a
 loopback-only service running until `Ctrl+C`; closing the browser tab does not
 stop it. Viewing does not change console or saved-result formats or make another
 CU request. See [local viewing](docs/usage.md#view-a-local-analysis-in-the-browser)

@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"azure.ai.content-understanding/internal/viewer"
 	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
 	"github.com/spf13/cobra"
 )
@@ -41,6 +42,7 @@ func newRootCommandWithViewer(
 	rootCmd.SetHelpCommand(&cobra.Command{Hidden: true})
 
 	rootCmd.AddCommand(newVersionCommand(&extCtx.OutputFormat))
+	rootCmd.AddCommand(newViewerCommand(&extCtx.OutputFormat, viewer.UpdateResources))
 	rootCmd.AddCommand(newMetadataCommand(rootCmd))
 	rootCmd.AddCommand(newAnalyzerCommand(extCtx, open))
 	rootCmd.AddCommand(newAnalyzeCommand(extCtx, open, openViewer))
