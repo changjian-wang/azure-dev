@@ -43,6 +43,21 @@ func TestViewerUpdateIsExplicitAndKeepsProgressOffJSONStdout(t *testing.T) {
 	assert.NotContains(t, stdout.String(), "Downloading")
 }
 
+func TestViewerUpdateHelpDescribesNotificationOnlyChecks(t *testing.T) {
+	format := "default"
+	command := newViewerCommand(&format, func(context.Context, io.Writer) (viewer.ResourceInfo, error) {
+		t.Fatal("help must not update the Viewer")
+		return viewer.ResourceInfo{}, nil
+	})
+	var stdout bytes.Buffer
+	command.SetOut(&stdout)
+	command.SetArgs([]string{"update", "--help"})
+	require.NoError(t, command.Execute())
+	assert.Contains(t, stdout.String(), "once every 24 hours")
+	assert.Contains(t, stdout.String(), "only notifies")
+	assert.Contains(t, stdout.String(), "keeps using the cached version")
+}
+
 func TestViewerUpdateFailureIsNonSuccessAndDoesNotProduceJSONResult(t *testing.T) {
 	format := "json"
 	command := newViewerCommand(&format, func(context.Context, io.Writer) (viewer.ResourceInfo, error) {

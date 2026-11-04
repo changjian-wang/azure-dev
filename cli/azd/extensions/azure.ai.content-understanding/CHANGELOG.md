@@ -2,7 +2,9 @@
 
 ## 0.1.0-preview (Unreleased)
 
-- View one analyzed local PDF or supported image in the embedded browser Viewer
+- Notify about newer compatible Viewer releases during `--view`, with checks
+  limited to once every 24 hours. Resource upgrades remain manual.
+- View one analyzed local PDF or supported image in the browser Viewer
   with `azd ai cu analyze --view`, without changing existing result output.
 - Initial preview of Azure Content Understanding commands under `azd ai cu`,
   using Azure Developer CLI sign-in and environments.

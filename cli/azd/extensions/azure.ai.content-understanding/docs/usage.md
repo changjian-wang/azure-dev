@@ -223,8 +223,17 @@ browser is opened. Existing valid cached resources work offline.
 azd ai cu viewer update
 ```
 
-Only this explicit update checks for a newer compatible release when a valid
-cache exists. A failed update preserves that cache. Ordinary Go builds and
+When a valid cache exists, `--view` checks release metadata at most once every
+24 hours, using a three-second timeout. A newer compatible version is announced
+on diagnostic output with the current version and this manual-update command.
+Known notices repeat on subsequent invocations without another network request;
+only an explicit update downloads and activates newer resources. A successful
+download or update records a fresh check and clears the previous notice.
+
+An update-check failure produces a warning, not a failure of cached viewing,
+and is also rate-limited when check metadata can be saved. An update-check record
+that is malformed or cannot be written warns explicitly; it never invalidates otherwise
+valid resources. A failed manual update preserves the active cache. Ordinary Go builds and
 installed use need neither Node.js, Python nor gh. The Viewer is read-only and
 makes no additional Azure calls. Omit `--view` (or use `--view=false`) to retain
 ordinary analysis without resource preparation or the local service.

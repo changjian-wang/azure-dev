@@ -22,7 +22,7 @@ func newViewerCommand(outputFormat *string, update viewerUpdater) *cobra.Command
 		Use: "update", Args: cobra.NoArgs,
 		Short: "Download and activate a compatible CU Viewer without running analysis",
 		Long: "Explicitly check the public cu-viewer releases for a compatible resource version.\n\n" +
-			"--view otherwise reuses a verified local cache without checking for updates.\n" +
+			"--view checks for updates at most once every 24 hours and only notifies; it keeps using the cached version.\n" +
 			"A failed update does not replace a previously working cached Viewer.",
 		Example: "  azd ai cu viewer update\n" +
 			"    Prepare the Viewer for offline use, or explicitly update its UI.\n\n" +

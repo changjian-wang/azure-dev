@@ -41,7 +41,9 @@ func newAnalyzeCommand(
 			"Results use YAML front matter and Markdown by default. Batches save source-relative result files.\n" +
 			"Use --output json for complete JSON, or --dry-run to inspect the plan without service calls.\n" +
 			"Use --view for one local PDF or supported image. The browser uses the complete response, " +
-			"independently of output format; the local viewer runs until Ctrl+C.",
+			"independently of output format; the local viewer runs until Ctrl+C.\n" +
+			"Cached Viewer updates are checked at most once every 24 hours; newer versions are announced, " +
+			"not installed. Run azd ai cu viewer update to upgrade manually.",
 		Example: `  azd ai cu analyze invoice.pdf
     Analyze one file using the configured analyzer, or prebuilt-layout if unset.
 

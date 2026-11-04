@@ -76,7 +76,7 @@ func newResourceResolver() (*resourceResolver, error) {
 	}, nil
 }
 
-// UpdateResources explicitly checks for a compatible release; normal --view uses a valid cache without networking.
+// UpdateResources explicitly downloads and activates a compatible release; --view only notifies about updates.
 func UpdateResources(ctx context.Context, output io.Writer) (ResourceInfo, error) {
 	resolver, err := newResourceResolver()
 	if err != nil {
@@ -108,7 +108,7 @@ func reportResource(output io.Writer, format string, values ...any) error {
 	return nil
 }
 
-func (r *resourceResolver) resolve(
+func (r *resourceResolver) resolveResources(
 	ctx context.Context, output io.Writer, update bool,
 ) (_ *resourceSnapshot, resultErr error) {
 	if err := ctx.Err(); err != nil {
@@ -129,26 +129,15 @@ func (r *resourceResolver) resolve(
 	} else if err := reportResource(output, "Checking for a compatible CU Viewer release..."); err != nil {
 		return nil, err
 	}
-	lockPath := filepath.Join(r.cacheDir, "download.lock")
-	if err := localio.Write(lockPath, nil, false); err != nil && !errors.Is(err, fs.ErrExist) {
-		return nil, cacheFailure("The CU Viewer cache could not be prepared safely.")
+	lock, err := r.lockCache(ctx)
+	if err != nil {
+		return nil, err
 	}
-	if _, err := localio.Check(lockPath); err != nil {
-		return nil, cacheFailure("The CU Viewer cache lock could not be verified.")
-	}
-	lock := flock.New(lockPath, flock.SetFlag(os.O_RDWR))
 	defer func() {
 		if err := lock.Close(); err != nil {
 			resultErr = errors.Join(resultErr, cacheFailure("The CU Viewer cache lock could not be released."))
 		}
 	}()
-	locked, err := lock.TryLockContext(ctx, 50*time.Millisecond)
-	if err != nil || !locked {
-		if ctx.Err() != nil {
-			return nil, ctx.Err()
-		}
-		return nil, cacheFailure("The CU Viewer cache could not be locked.")
-	}
 	if !update {
 		if snapshot, err := r.cached(); err == nil {
 			return snapshot, nil
@@ -197,10 +186,41 @@ func (r *resourceResolver) resolve(
 	if err := localio.Write(filepath.Join(r.cacheDir, "current.json"), data, true); err != nil {
 		return nil, cacheFailure("The CU Viewer cache could not activate the downloaded version.")
 	}
+	if err := r.saveUpdateCheck(updateCheck{
+		CheckedAt: time.Now().UTC(), LatestVersion: document.ViewerVersion,
+	}); err != nil {
+		if err := reportResource(output,
+			"Warning: CU Viewer update-check metadata could not be saved; future checks may repeat."); err != nil {
+			return nil, err
+		}
+	}
 	if err := reportResource(output, "CU Viewer %s is ready.", document.ViewerVersion); err != nil {
 		return nil, err
 	}
 	return &resourceSnapshot{info: ResourceInfo{document.ViewerVersion, viewerProtocol, r.cacheDir}, assets: assets}, nil
+}
+
+func (r *resourceResolver) lockCache(ctx context.Context) (*flock.Flock, error) {
+	lockPath := filepath.Join(r.cacheDir, "download.lock")
+	if err := localio.Write(lockPath, nil, false); err != nil && !errors.Is(err, fs.ErrExist) {
+		return nil, cacheFailure("The CU Viewer cache could not be prepared safely.")
+	}
+	if _, err := localio.Check(lockPath); err != nil {
+		return nil, cacheFailure("The CU Viewer cache lock could not be verified.")
+	}
+	lock := flock.New(lockPath, flock.SetFlag(os.O_RDWR))
+	locked, err := lock.TryLockContext(ctx, 50*time.Millisecond)
+	if err != nil || !locked {
+		var closeErr error
+		if err := lock.Close(); err != nil {
+			closeErr = cacheFailure("The CU Viewer cache lock could not be released.")
+		}
+		if ctx.Err() != nil {
+			return nil, errors.Join(ctx.Err(), closeErr)
+		}
+		return nil, errors.Join(cacheFailure("The CU Viewer cache could not be locked."), closeErr)
+	}
+	return lock, nil
 }
 
 func (r *resourceResolver) snapshotBase(pointer cachePointer) string {

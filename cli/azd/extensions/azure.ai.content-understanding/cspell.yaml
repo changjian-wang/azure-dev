@@ -54,6 +54,8 @@ overrides:
   - filename: "internal/viewer/README.md"
     words:
       - changjian
+      - coreutils
+      - findutils
   - filename: "internal/infra/templates.go"
     words:
       - australiaeast

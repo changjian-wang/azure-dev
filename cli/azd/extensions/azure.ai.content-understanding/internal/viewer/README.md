@@ -9,8 +9,8 @@ Azure credentials.
 ## Preparation and updates
 
 `--view` validates the local source and prepares Viewer resources before
-authentication or analysis. A verified compatible cache is used directly without
-network requests. On first use, or after detecting corrupt/incompatible cached
+authentication or analysis. A verified compatible cache is reused, with an
+update-notification check at most once every 24 hours. On first use, or after detecting corrupt/incompatible cached
 resources, the command explains what it is preparing on stderr, downloads,
 verifies and caches a compatible release, then starts the local viewing flow.
 
@@ -23,8 +23,22 @@ azd ai cu viewer update --output json
 
 The update command does not analyze or authenticate against Azure. Its version,
 protocol and cache location are the result output; preparation progress goes to
-stderr. A failed update leaves the previous active cache intact. Ordinary
-`--view` does not silently check for or switch to newer releases.
+stderr. A failed update leaves the previous active cache intact.
+
+Ordinary `--view` checks release metadata at most once every 24 hours, using a
+three-second timeout. A newer compatible version produces a diagnostic notice
+with the current version, available version, and `azd ai cu viewer update`
+command. Known update notices continue on later invocations without another
+network request until an update is applied or check information is refreshed.
+The check never downloads a new archive or changes the active Viewer.
+
+Check failures produce a warning and keep a valid cached Viewer usable offline;
+failed checks are also limited to once per 24 hours when their metadata can be
+saved. A check record that cannot be read or written produces an explicit warning,
+not a failure of cached viewing. A successful first download or manual update
+records a fresh check, so immediate subsequent uses do not query releases again.
+Progress and notices remain on the injected diagnostic writer, not result JSON,
+including with `--output none` or `--no-prompt`.
 
 ## Release contract
 
@@ -51,10 +65,11 @@ served. There is no embedded-asset fallback.
 
 Resources live under `os.UserCacheDir()` in
 `azure-ai-content-understanding\viewer\protocol-1`. The private cache contains
-only versioned resource archives/manifests, an atomic active-version record and
-a cross-process download lock, not documents or analysis responses. Existing
+only versioned resource archives/manifests, an atomic active-version record,
+an update-check record, and a cross-process download/check lock, not documents or analysis responses. Existing
 anchored directory/ACL/symlink checks and atomic file publication are reused.
-Concurrent first uses share a single download. The active pointer changes only
+Concurrent first uses share a single download, and concurrent cached uses share
+a daily update check. The active pointer changes only
 after a complete valid snapshot is stored; previously cached versions are not
 deleted by an unsuccessful update.
 

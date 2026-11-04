@@ -492,6 +492,9 @@ func TestAnalyzeHelpAndMetadataRemainOffline(t *testing.T) {
 				"--dry-run", "--yes", "--report-file", "--concurrency", "--view"} {
 				assert.Contains(t, stdout.String(), flag)
 			}
+			assert.Contains(t, stdout.String(), "once every 24 hours")
+			assert.Contains(t, stdout.String(), "not installed")
+			assert.Contains(t, stdout.String(), "azd ai cu viewer update")
 		}
 	}
 }

@@ -207,8 +207,11 @@ azd ai cu analyze invoice.pdf --analyzer prebuilt-invoice --view
 ```
 
 The runtime Viewer needs no Node.js, Python, or gh. First use downloads and
-validates a compatible published resource release; a verified cache works
-offline without checking for updates. Explicitly prepare or update it with
+validates a compatible published resource release; a verified cache remains
+usable offline. `--view` checks for a newer compatible release at most once every
+24 hours and prints a manual-update notice, without downloading or activating
+the new version. Check failures warn but do not block valid cached viewing.
+Explicitly prepare or update it with
 `azd ai cu viewer update`. Resource preparation failures stop before analysis
 or browser startup. The command keeps a
 loopback-only service running until `Ctrl+C`; closing the browser tab does not
