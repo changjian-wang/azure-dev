@@ -186,7 +186,7 @@ configuration. Select inputs using one mode: positional inputs, `--file`,
 ### View a local analysis in the browser
 
 Use `--view` to display one local source and the complete response from the same
-analysis in the independently delivered CU Viewer:
+analysis in the bundled CU Viewer:
 
 ```powershell name="Analyze and view an invoice"
 azd ai cu analyze sample_invoice.pdf --analyzer prebuilt-invoice --view
@@ -204,39 +204,26 @@ azd ai cu analyze sample_invoice.pdf --analyzer prebuilt-invoice --view
   combinations are rejected before authentication or CU calls. An existing
   result that would be skipped by `--on-existing skip` is also rejected; choose
   a new output path or explicitly use `--on-existing reanalyze`.
-- The source type, runtime resources, and loopback port are checked before
+- The source type, bundled resources, and loopback port are checked before
   analysis. After success, the default browser opens an isolated session on
-  `127.0.0.1` using a system-assigned port. Only validated cached resources and the
+  `127.0.0.1` using a system-assigned port. Only embedded static resources and the
   selected source are served; the working directory is not exposed.
 - The command stays in the foreground until `Ctrl+C`. Closing a tab does not
   stop the service. Cancellation releases the listener, connections, and source
   handle. Viewer startup failures return an error without reanalyzing or removing
   completed result files.
 
-The extension fetches compiled resources from the public cu-viewer releases when
-no compatible verified cache is available; it no longer compiles a Viewer copy
-into the Go binary. Progress and failures are written to diagnostic output, not
-result JSON. If first-use preparation fails, no analysis is started and no blank
-browser is opened. Existing valid cached resources work offline.
+The complete production page is copied into
+[cu-viewer-static](../cu-viewer-static) during development and embedded in the
+Go executable. There is no resource download, ZIP extraction, cache, update
+check or separate Viewer update command. Changing the static files requires a
+new extension build. Node/npm are only needed by the separate frontend producer,
+not by Go builds or installed viewing.
 
-```powershell name="Explicitly prepare or update the Viewer cache"
-azd ai cu viewer update
-```
-
-When a valid cache exists, `--view` checks release metadata at most once every
-24 hours, using a three-second timeout. A newer compatible version is announced
-on diagnostic output with the current version and this manual-update command.
-Known notices repeat on subsequent invocations without another network request;
-only an explicit update downloads and activates newer resources. A successful
-download or update records a fresh check and clears the previous notice.
-
-An update-check failure produces a warning, not a failure of cached viewing,
-and is also rate-limited when check metadata can be saved. An update-check record
-that is malformed or cannot be written warns explicitly; it never invalidates otherwise
-valid resources. A failed manual update preserves the active cache. Ordinary Go builds and
-installed use need neither Node.js, Python nor gh. The Viewer is read-only and
-makes no additional Azure calls. Omit `--view` (or use `--view=false`) to retain
-ordinary analysis without resource preparation or the local service.
+Preparation failures are written to diagnostic output, not result JSON, and
+stop before analysis or browser startup. The Viewer is read-only and makes no
+additional Azure calls. Omit `--view` (or use `--view=false`) to retain ordinary
+analysis without resource preparation or the local service.
 
 ## Create a custom analyzer
 
@@ -545,10 +532,11 @@ registry, not the public registry. Subsequent `azd x build` or `azd x watch`
 runs rebuild and reinstall the extension without repeating the initial
 packaging and registration steps.
 
-The runtime Viewer source, cache, release contract and explicit update procedure
-are described in [the Viewer package](../internal/viewer/README.md). Frontend
-release archives are produced in cu-viewer, not copied into the Go source tree.
-This local implementation has not published the first public resource release.
+The bundled Viewer, local serving contract and validation commands are
+described in [the Viewer package](../internal/viewer/README.md). The source
+revision and manual refresh procedure are recorded with
+[the static files](../cu-viewer-static/README.md). Only compiled frontend files
+and their licenses are copied; no npm dependencies or resource archives are needed.
 
 Tests live
 beside their Go packages under [internal/](../internal/), including command,

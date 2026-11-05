@@ -206,14 +206,11 @@ add `--view`:
 azd ai cu analyze invoice.pdf --analyzer prebuilt-invoice --view
 ```
 
-The runtime Viewer needs no Node.js, Python, or gh. First use downloads and
-validates a compatible published resource release; a verified cache remains
-usable offline. `--view` checks for a newer compatible release at most once every
-24 hours and prints a manual-update notice, without downloading or activating
-the new version. Check failures warn but do not block valid cached viewing.
-Explicitly prepare or update it with
-`azd ai cu viewer update`. Resource preparation failures stop before analysis
-or browser startup. The command keeps a
+The compiled Viewer page is bundled with the extension from
+[cu-viewer-static](cu-viewer-static). Go builds and installed viewing need no
+Node.js, npm, Python, resource download, or Viewer cache. There is no separate
+Viewer update command; updating the static files requires rebuilding the extension.
+Resource preparation failures stop before analysis or browser startup. The command keeps a
 loopback-only service running until `Ctrl+C`; closing the browser tab does not
 stop it. Viewing does not change console or saved-result formats or make another
 CU request. See [local viewing](docs/usage.md#view-a-local-analysis-in-the-browser)

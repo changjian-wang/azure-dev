@@ -2,8 +2,8 @@
 
 ## 0.1.0-preview (Unreleased)
 
-- Notify about newer compatible Viewer releases during `--view`, with checks
-  limited to once every 24 hours. Resource upgrades remain manual.
+- Bundle the compiled Viewer page with the extension. `--view` no longer
+  downloads resources, manages a cache, or checks for Viewer updates.
 - View one analyzed local PDF or supported image in the browser Viewer
   with `azd ai cu analyze --view`, without changing existing result output.
 - Initial preview of Azure Content Understanding commands under `azd ai cu`,

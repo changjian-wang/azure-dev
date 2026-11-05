@@ -1,0 +1,43 @@
+HEIC/HEIF decoder notices
+=========================
+
+heic-rs 0.1.4
+Copyright (c) the heic-rs contributors
+Source: https://github.com/tbraun96/heic-rs
+Verified revision: 999470f514c8e9a1a7c37ea44ba70cc32b1308fe
+License: MIT OR Apache-2.0
+Included texts: LICENSE-heic-rs-MIT, LICENSE-heic-rs-APACHE
+
+wasm-bindgen 0.2.129
+Copyright (c) the wasm-bindgen contributors
+Source: https://github.com/wasm-bindgen/wasm-bindgen
+License: MIT OR Apache-2.0
+Included texts: LICENSE-wasm-bindgen-MIT, LICENSE-wasm-bindgen-APACHE
+
+Exact transitive package versions, checksums, licenses and runtime/build
+classification are listed in SBOM.json.
+
+The generated WebAssembly also contains portions of the Rust core/alloc
+libraries, distributed under the Rust project's MIT OR Apache-2.0 terms.
+The same license texts are included in this directory.
+
+Generated artifacts
+-------------------
+
+heic_decoder.js
+SHA-256: 37e9954f836e53cf877418a4ad419fa82f6187ade49e047543b10fe80340fbec
+
+heic_decoder_bg.wasm
+SHA-256: ea8b4707cdcf65c256e14639ab339664fc14b5c231063e80660c287684b129e8
+
+Build inputs
+------------
+
+- Rust 1.94.1
+- wasm32-unknown-unknown target
+- wasm-bindgen-cli 0.2.129
+- codecs/heic-rs-wasm/Cargo.lock
+- tools/build-heic-codec.ps1
+
+These software licenses do not replace any separate product, patent,
+security, or publication review required for distribution.

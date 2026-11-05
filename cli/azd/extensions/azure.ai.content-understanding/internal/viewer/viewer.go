@@ -23,6 +23,7 @@ import (
 	"sync"
 	"time"
 
+	viewerstatic "azure.ai.content-understanding/cu-viewer-static"
 	"azure.ai.content-understanding/internal/analysis"
 	"azure.ai.content-understanding/internal/exterrors"
 
@@ -35,7 +36,7 @@ const contentSecurityPolicy = "default-src 'self'; script-src 'self' 'wasm-unsaf
 	"frame-ancestors 'none'; form-action 'none'"
 
 type Session struct {
-	assets      map[string][]byte
+	assets      fs.FS
 	source      *os.File
 	sourceInfo  fs.FileInfo
 	sourceType  string
@@ -56,27 +57,11 @@ func Prepare(ctx context.Context, input analysis.Input, output io.Writer) (*Sess
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	return prepareWithResources(ctx, input, output, func() (map[string][]byte, error) {
-		resolver, err := newResourceResolver()
-		if err != nil {
-			return nil, err
-		}
-		snapshot, err := resolver.resolve(ctx, output, false)
-		if err != nil {
-			return nil, err
-		}
-		return snapshot.assets, nil
-	})
+	return prepare(ctx, input, output, viewerstatic.Files)
 }
 
 func prepare(
-	ctx context.Context, input analysis.Input, output io.Writer, assets map[string][]byte,
-) (_ *Session, resultErr error) {
-	return prepareWithResources(ctx, input, output, func() (map[string][]byte, error) { return assets, nil })
-}
-
-func prepareWithResources(
-	ctx context.Context, input analysis.Input, output io.Writer, load func() (map[string][]byte, error),
+	ctx context.Context, input analysis.Input, output io.Writer, assets fs.FS,
 ) (_ *Session, resultErr error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -106,16 +91,7 @@ func prepareWithResources(
 			Suggestion: "Use a supported source, or omit --view. AVIF and HEIF image sequences are not supported.",
 		}
 	}
-	assets, err := load()
-	if err != nil {
-		if ctx.Err() != nil {
-			return nil, ctx.Err()
-		}
-		if failure, ok := errors.AsType[*azdext.LocalError](err); ok {
-			detail := *failure
-			detail.Message = "CU Viewer could not be prepared; no analysis was started. " + failure.Message
-			return nil, &detail
-		}
+	if err := validateAssets(assets); err != nil {
 		return nil, err
 	}
 	if err := ctx.Err(); err != nil {
@@ -267,16 +243,22 @@ func (s *Session) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 			io.NewSectionReader(s.source, 0, s.sourceInfo.Size()))
 		return
 	}
-	var body []byte
-	switch name {
-	case "":
-		name, body = "index.html", s.assets["index.html"]
-	case "session.json":
-		body = s.sessionJSON
-	default:
-		body, found = s.assets[name]
-		if !found {
+	body := s.sessionJSON
+	if name != "session.json" {
+		if name == "" {
+			name = "index.html"
+		}
+		info, err := fs.Stat(s.assets, name)
+		if errors.Is(err, fs.ErrNotExist) || (err == nil && !info.Mode().IsRegular()) {
 			http.NotFound(writer, request)
+			return
+		}
+		if err == nil {
+			body, err = fs.ReadFile(s.assets, name)
+		}
+		if err != nil {
+			s.server.ErrorLog.Printf("A bundled Viewer resource could not be read: %s", name)
+			http.Error(writer, "The viewer resource could not be read.", http.StatusInternalServerError)
 			return
 		}
 	}

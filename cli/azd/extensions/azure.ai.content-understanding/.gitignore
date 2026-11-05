@@ -1,0 +1,3 @@
+# PDF.js ships this build directory as a runtime dependency.
+!/cu-viewer-static/assets/pdfjs/build/
+!/cu-viewer-static/assets/pdfjs/build/**

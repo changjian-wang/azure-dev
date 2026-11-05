@@ -1,4 +1,7 @@
 internal/infra/assets/** text eol=lf
-internal/viewer/resources/viewer/manifest.json text eol=lf
-internal/viewer/resources/viewer/viewer.zip binary
 **/testdata/** text eol=lf
+
+# Preserve compiled resources and third-party notices verbatim.
+cu-viewer-static/** -text -whitespace
+cu-viewer-static/embed.go text eol=lf !whitespace
+cu-viewer-static/README.md text eol=lf !whitespace

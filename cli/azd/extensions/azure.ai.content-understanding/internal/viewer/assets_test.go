@@ -4,111 +4,99 @@
 package viewer
 
 import (
-	"archive/zip"
 	"bytes"
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
+	"errors"
+	"io"
+	"io/fs"
 	"regexp"
 	"strings"
 	"testing"
+	"testing/fstest"
 
+	viewerstatic "azure.ai.content-understanding/cu-viewer-static"
+	"azure.ai.content-understanding/internal/exterrors"
+
+	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestResourceArchiveContainsPageAndCodecs(t *testing.T) {
-	archive, manifest := assetFixture(t, map[string][]byte{
-		"index.html":     []byte(`<div id="root"></div><script src="./assets/main.js"></script>`),
-		"assets/main.js": []byte("viewer"), "LICENSE.txt": []byte("MIT"),
-		"THIRD-PARTY-NOTICES.txt": []byte("notices"), "assets/pdf.worker.mjs": []byte("worker"),
-		"assets/heif.wasm": {0, 'a', 's', 'm'},
-	})
-	assets, err := readAssets(archive, manifest)
+func testAssets() fstest.MapFS {
+	return fstest.MapFS{
+		"index.html":                        {Data: []byte(`<div id="root"></div><script src="./assets/main.js"></script>`)},
+		"assets/main.js":                    {Data: []byte("viewer")},
+		"LICENSE.txt":                       {Data: []byte("MIT")},
+		"THIRD-PARTY-NOTICES.txt":           {Data: []byte("notices")},
+		"assets/pdfjs/build/pdf.worker.mjs": {Data: []byte("worker")},
+		"assets/heif/heic_decoder_bg.wasm":  {Data: []byte{0, 'a', 's', 'm'}},
+	}
+}
+
+func TestBundledPageContainsItsResourcesAndCodecs(t *testing.T) {
+	require.NoError(t, validateAssets(viewerstatic.Files))
+	body, err := viewerstatic.Files.ReadFile("index.html")
 	require.NoError(t, err)
-	page := string(assets["index.html"])
-	assert.Contains(t, page, `<div id="root"></div>`)
-	references := regexp.MustCompile(`(?:src|href)="\./([^"]+)"`).FindAllStringSubmatch(page, -1)
+	assert.Contains(t, string(body), `<div id="root"></div>`)
+	references := regexp.MustCompile(`(?:src|href)="\./([^"]+)"`).FindAllStringSubmatch(string(body), -1)
 	require.NotEmpty(t, references)
 	for _, reference := range references {
-		assert.NotEmpty(t, assets[reference[1]], reference[1])
+		content, err := viewerstatic.Files.ReadFile(reference[1])
+		require.NoError(t, err, reference[1])
+		assert.NotEmpty(t, content, reference[1])
 	}
-	var pdfWorker, heifCodec bool
-	for name, content := range assets {
-		pdfWorker = pdfWorker || strings.Contains(name, "pdf.worker")
-		heifCodec = heifCodec || strings.HasSuffix(name, ".wasm") && bytes.HasPrefix(content, []byte{0, 'a', 's', 'm'})
-	}
-	assert.True(t, pdfWorker)
-	assert.True(t, heifCodec)
-}
-
-func assetFixture(t *testing.T, files map[string][]byte) ([]byte, []byte) {
-	t.Helper()
-	var archive bytes.Buffer
-	writer := zip.NewWriter(&archive)
-	records := make([]resourceRecord, 0, len(files))
-	for name, content := range files {
-		stream, err := writer.Create(name)
-		require.NoError(t, err)
-		_, err = stream.Write(content)
-		require.NoError(t, err)
-		records = append(records, assetRecord(name, content))
-	}
-	require.NoError(t, writer.Close())
-	document := struct {
-		SchemaVersion int              `json:"schemaVersion"`
-		Archive       resourceRecord   `json:"archive"`
-		Files         []resourceRecord `json:"files"`
-	}{2, assetRecord("viewer.zip", archive.Bytes()), records}
-	manifest, err := json.Marshal(document)
-	require.NoError(t, err)
-	return archive.Bytes(), manifest
-}
-
-func assetRecord(name string, body []byte) resourceRecord {
-	hash := sha256.Sum256(body)
-	return resourceRecord{Path: name, Bytes: int64(len(body)), SHA256: hex.EncodeToString(hash[:])}
-}
-
-func TestAssetsRejectCorruptionAndUnsafeEntries(t *testing.T) {
-	files := map[string][]byte{
-		"index.html": []byte("<html></html>"), "LICENSE.txt": []byte("license"),
-		"THIRD-PARTY-NOTICES.txt": []byte("notices"),
-	}
-	archive, manifest := assetFixture(t, files)
-	assets, err := readAssets(archive, manifest)
-	require.NoError(t, err)
-	assert.Equal(t, files, assets)
-	invalidArchive := bytes.Clone(archive)
-	invalidArchive[0] ^= 0xff
-	indexHash := assetRecord("index.html", files["index.html"]).SHA256
-	for _, test := range []struct {
-		name     string
-		archive  []byte
-		manifest []byte
-	}{
-		{"manifest JSON", archive, []byte("{")},
-		{"schema", archive, bytes.Replace(manifest, []byte(`"schemaVersion":2`), []byte(`"schemaVersion":1`), 1)},
-		{"archive", invalidArchive, manifest},
-		{"file hash", archive, bytes.Replace(manifest, []byte(indexHash), []byte(strings.Repeat("0", 64)), 1)},
-		{"file count", archive, bytes.Replace(manifest, []byte(`"files":[`), []byte(`"files":[{},`), 1)},
+	for _, name := range []string{
+		"assets/pdfjs/build/pdf.worker.mjs", "assets/heif/heif.worker.js",
+		"assets/heif/heic_decoder.js", "assets/heif/heic_decoder_bg.wasm",
 	} {
-		t.Run(test.name, func(t *testing.T) {
-			_, err := readAssets(test.archive, test.manifest)
-			require.Error(t, err)
-		})
+		content, err := viewerstatic.Files.ReadFile(name)
+		require.NoError(t, err, name)
+		assert.NotEmpty(t, content, name)
+		if strings.HasSuffix(name, ".wasm") {
+			assert.True(t, bytes.HasPrefix(content, []byte{0, 'a', 's', 'm'}))
+		}
 	}
-	for _, name := range []string{"../outside", "assets/../outside", "session.json", "source"} {
-		t.Run(name, func(t *testing.T) {
-			files[name] = []byte("unexpected")
-			archive, manifest := assetFixture(t, files)
-			_, err := readAssets(archive, manifest)
-			require.Error(t, err)
-			delete(files, name)
-		})
+	for _, pattern := range []string{
+		"assets/pdfjs/cmaps/*", "assets/pdfjs/standard_fonts/*",
+		"assets/pdfjs/wasm/*", "assets/pdfjs/iccs/*",
+	} {
+		files, err := fs.Glob(viewerstatic.Files, pattern)
+		require.NoError(t, err)
+		assert.NotEmpty(t, files, pattern)
 	}
-	delete(files, "LICENSE.txt")
-	archive, manifest = assetFixture(t, files)
-	_, err = readAssets(archive, manifest)
-	require.Error(t, err)
+	for _, name := range []string{"embed.go", "README.md", "viewer.zip", "manifest.json"} {
+		_, err := viewerstatic.Files.Open(name)
+		assert.ErrorIs(t, err, fs.ErrNotExist, name)
+	}
+}
+
+func TestPrepareRejectsMissingOrEmptyStaticResources(t *testing.T) {
+	for _, name := range []string{"index.html", "LICENSE.txt", "THIRD-PARTY-NOTICES.txt"} {
+		for _, state := range []string{"missing", "empty"} {
+			t.Run(name+"/"+state, func(t *testing.T) {
+				assets := testAssets()
+				if state == "empty" {
+					assets[name].Data = nil
+				} else {
+					delete(assets, name)
+				}
+				input := localInput(t, "invoice.pdf", []byte("%PDF-1.7\nsource bytes"))
+				session, err := prepare(t.Context(), input, io.Discard, assets)
+				require.Error(t, err)
+				assert.Nil(t, session)
+				detail, ok := errors.AsType[*azdext.LocalError](err)
+				require.True(t, ok)
+				assert.Equal(t, exterrors.CodeViewerAssetsInvalid, detail.Code)
+				assert.Contains(t, detail.Message, name)
+				assert.Contains(t, detail.Message, "no analysis was started")
+			})
+		}
+	}
+}
+
+func TestPrepareValidatesSourceBeforeStaticResources(t *testing.T) {
+	input := localInput(t, "invalid.pdf", []byte("not a document"))
+	_, err := prepare(t.Context(), input, io.Discard, fstest.MapFS{})
+	detail, ok := errors.AsType[*azdext.LocalError](err)
+	require.True(t, ok)
+	assert.Equal(t, exterrors.CodeViewerSourceInvalid, detail.Code)
 }

@@ -6,10 +6,8 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.23.3
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.15.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/cognitiveservices/armcognitiveservices/v2 v2.0.0
-	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/azure/azure-dev/cli/azd v1.37.0
 	github.com/fatih/color v1.19.0
-	github.com/gofrs/flock v0.13.1
 	github.com/google/uuid v1.6.0
 	github.com/invopop/jsonschema v0.14.0
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
@@ -20,6 +18,11 @@ require (
 	go.opentelemetry.io/otel/trace v1.47.0
 	go.yaml.in/yaml/v3 v3.0.5
 	google.golang.org/grpc v1.84.0
+)
+
+require (
+	github.com/Masterminds/semver/v3 v3.5.0 // indirect
+	github.com/gofrs/flock v0.13.1 // indirect
 )
 
 require (

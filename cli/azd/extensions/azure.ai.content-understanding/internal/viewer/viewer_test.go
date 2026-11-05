@@ -9,7 +9,9 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"io/fs"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"strings"
@@ -28,10 +30,7 @@ const viewerResponse = `{"status":"Succeeded","result":{"contents":[]},"future":
 func testSession(t *testing.T, output io.Writer) *Session {
 	t.Helper()
 	input := localInput(t, "invoice with spaces.pdf", []byte("%PDF-1.7\nsource bytes"))
-	session, err := prepare(t.Context(), input, output, map[string][]byte{
-		"index.html": []byte(`<div id="root"></div>`), "LICENSE.txt": []byte("MIT"),
-		"assets/pdf.worker.mjs": []byte("worker"), "assets/heif.wasm": {0, 'a', 's', 'm'},
-	})
+	session, err := prepare(t.Context(), input, output, testAssets())
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, session.Close()) })
 	return session
@@ -113,18 +112,24 @@ func TestViewerSessionServesOnlyItsResourcesAndStops(t *testing.T) {
 	assert.Equal(t, "21", response.Header.Get("Content-Length"))
 	assert.Empty(t, body)
 
-	for name := range session.assets {
+	require.NoError(t, fs.WalkDir(session.assets, ".", func(name string, _ fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
 		if strings.HasSuffix(name, ".wasm") {
 			response, _ := viewerRequest(t, client, http.MethodGet, address+name, nil)
 			assert.Equal(t, http.StatusOK, response.StatusCode)
 			assert.Equal(t, "application/wasm", response.Header.Get("Content-Type"))
 		}
-	}
-	for _, path := range []string{"assets/", "../outside", "%2e%2e/outside", "source/another.pdf", "missing"} {
+		return nil
+	}))
+	for _, path := range []string{"assets/", "assets", "../outside", "%2e%2e/outside",
+		"source/another.pdf", "missing", "embed.go", "README.md"} {
 		response, body := viewerRequest(t, client, http.MethodGet, address+path, nil)
 		assert.Equal(t, http.StatusNotFound, response.StatusCode, path)
 		assert.NotContains(t, string(body), "source bytes")
 	}
+
 	for _, headers := range []map[string]string{
 		{"Host": "untrusted.example"},
 		{"Origin": "https://untrusted.example"},
@@ -155,6 +160,25 @@ func TestViewerSessionServesOnlyItsResourcesAndStops(t *testing.T) {
 	_, err = session.source.Stat()
 	require.Error(t, err)
 	require.NoError(t, session.Close())
+}
+
+type unreadableAssets struct{}
+
+func (unreadableAssets) Open(string) (fs.File, error) {
+	return nil, fs.ErrPermission
+}
+
+func TestStaticResourceReadFailureIsExplicit(t *testing.T) {
+	var output bytes.Buffer
+	session := testSession(t, &output)
+	session.assets = unreadableAssets{}
+	request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, session.address+"assets/main.js", nil)
+	require.NoError(t, err)
+	response := httptest.NewRecorder()
+	session.ServeHTTP(response, request)
+	assert.Equal(t, http.StatusInternalServerError, response.Code)
+	assert.Contains(t, response.Body.String(), "could not be read")
+	assert.Contains(t, output.String(), "could not be read")
 }
 
 type brokenViewerWriter struct{}
