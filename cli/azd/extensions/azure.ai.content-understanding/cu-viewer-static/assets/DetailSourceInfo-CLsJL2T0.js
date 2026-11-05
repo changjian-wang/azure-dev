@@ -1,1 +1,0 @@
-import{r as e}from"./index-CjEhf2Y8.js";var t=e();function n({field:e,id:n}){let r=[...new Set(e.regions.map(e=>e.pageNumber))];return(0,t.jsx)(`span`,{id:n,className:`cu-detail-source`,children:r.length?`Page ${r.join(`, `)}${e.regions.length>1?` · ${e.regions.length} regions`:``}`:`No source region`})}export{n as t};

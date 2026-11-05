@@ -8,14 +8,13 @@ not served to the browser.
 ## Current source
 
 - Repository: cu-viewer.
-- Source commit: `16a867f6aa80d96a41b4231da781f50a5c17fd85`.
+- Source commit: `c80dd4d5e5f2c4767697e741599bd5eb8905f7d0`.
 - Frontend package version: `0.0.0` (local preview source, not a published npm dependency).
-- Build command: `npm run build:viewer`.
+- Build command: `npm run build:viewer -- --configLoader runner`.
 - Imported on: 2026-11-05.
 - Payload: 225 plain files, including the root licenses.
 
-This copy uses the committed Viewer UI. The pending single-toolbar changes in
-the separate cu-viewer working tree are deliberately not included.
+This copy uses the current committed Viewer UI from the source revision above.
 
 ## Manual updates
 
