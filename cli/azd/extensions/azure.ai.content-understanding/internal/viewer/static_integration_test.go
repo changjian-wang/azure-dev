@@ -34,6 +34,22 @@ func TestStaticViewerBrowserFixture(t *testing.T) {
 	session, err := Prepare(t.Context(), input, io.Discard)
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, session.Close()) })
+	var metadata struct {
+		AnalyzerID string `json:"analyzerId"`
+		Result     struct {
+			AnalyzerID string `json:"analyzerId"`
+		} `json:"result"`
+	}
+	require.NoError(t, json.Unmarshal(result, &metadata))
+	analyzer := metadata.Result.AnalyzerID
+	if analyzer == "" {
+		analyzer = metadata.AnalyzerID
+	}
+	if analyzer == "" {
+		analyzer = "browser-fixture"
+	}
+	fieldOrders, err := NewFieldOrderStore("https://viewer-test.services.ai.azure.com", analyzer)
+	require.NoError(t, err)
 	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
 	defer cancel()
 	opened := make(chan string, 1)
@@ -42,7 +58,7 @@ func TestStaticViewerBrowserFixture(t *testing.T) {
 		return nil
 	}
 	done := make(chan error, 1)
-	go func() { done <- session.Show(ctx, json.RawMessage(result)) }()
+	go func() { done <- session.Show(ctx, json.RawMessage(result), fieldOrders) }()
 	var address string
 	select {
 	case address = <-opened:

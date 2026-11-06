@@ -14,7 +14,7 @@ import (
 )
 
 type analyzeViewer interface {
-	Show(context.Context, json.RawMessage) error
+	Show(context.Context, json.RawMessage, viewer.FieldOrderStore) error
 	Close() error
 }
 

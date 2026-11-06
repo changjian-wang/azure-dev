@@ -216,6 +216,20 @@ stop it. Viewing does not change console or saved-result formats or make another
 CU request. See [local viewing](docs/usage.md#view-a-local-analysis-in-the-browser)
 for supported sources and incompatible options.
 
+The Viewer has no separate app title bar. Pointer previews dismiss immediately,
+do not intercept underlying fields, and remain independent of selection.
+Full-value details provide persistent reading and copying. Objects start
+collapsed, tables start expanded, and Fields settings can expand or collapse
+all nested objects without changing table state or field order.
+
+Customized field order is saved in azd user settings under the literal
+`extension.installed["azure.ai.content-understanding"].Viewer.fieldOrderByAnalyzer`
+hierarchy, scoped by normalized resource endpoint and analyzer ID. Merely
+opening a file writes no default order. Reset removes only this analyzer's
+override. This requires the paired Viewer and host; preserving `Viewer` during
+extension replacement also requires an azd core build containing the installed
+record compatibility fix. Existing installed binaries are not automatically updated.
+
 In the saved response, structured fields are in each content entry's `fields`
 object under `result.contents`, for example `result.contents[0].fields`.
 See [document elements](https://learn.microsoft.com/azure/ai-services/content-understanding/document/elements)

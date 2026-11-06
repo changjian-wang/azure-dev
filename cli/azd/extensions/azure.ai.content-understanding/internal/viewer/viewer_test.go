@@ -67,7 +67,7 @@ func TestViewerSessionServesOnlyItsResourcesAndStops(t *testing.T) {
 		return nil
 	}
 	done := make(chan error, 1)
-	go func() { done <- session.Show(ctx, json.RawMessage(viewerResponse)) }()
+	go func() { done <- session.Show(ctx, json.RawMessage(viewerResponse), nil) }()
 	var address string
 	select {
 	case address = <-opened:
@@ -206,7 +206,7 @@ func TestViewerFailuresAreExplicitAndReleaseResources(t *testing.T) {
 			case "listener":
 				require.NoError(t, session.listener.Close())
 			}
-			err := session.Show(t.Context(), json.RawMessage(viewerResponse))
+			err := session.Show(t.Context(), json.RawMessage(viewerResponse), nil)
 			local, ok := errors.AsType[*azdext.LocalError](err)
 			require.True(t, ok)
 			assert.Equal(t, want, local.Code)
@@ -224,13 +224,13 @@ func TestViewerRejectsInvalidResultsAndChangedSources(t *testing.T) {
 		session := testSession(t, io.Discard)
 		called := false
 		session.open = func(context.Context, string, io.Writer) error { called = true; return nil }
-		err := session.Show(t.Context(), json.RawMessage(result))
+		err := session.Show(t.Context(), json.RawMessage(result), nil)
 		require.Error(t, err)
 		assert.False(t, called)
 	}
 	session := testSession(t, io.Discard)
 	require.NoError(t, os.WriteFile(session.source.Name(), []byte("changed"), 0o600))
-	err := session.Show(t.Context(), json.RawMessage(viewerResponse))
+	err := session.Show(t.Context(), json.RawMessage(viewerResponse), nil)
 	require.Error(t, err)
 	local, ok := errors.AsType[*azdext.LocalError](err)
 	require.True(t, ok)

@@ -42,6 +42,7 @@ type Session struct {
 	sourceType  string
 	sourcePath  string
 	sessionJSON []byte
+	fieldOrders FieldOrderStore
 	listener    net.Listener
 	server      *http.Server
 	prefix      string
@@ -120,7 +121,7 @@ func prepare(
 }
 
 // Show publishes the complete response, opens the browser, and waits for cancellation.
-func (s *Session) Show(ctx context.Context, response json.RawMessage) (resultErr error) {
+func (s *Session) Show(ctx context.Context, response json.RawMessage, fieldOrders FieldOrderStore) (resultErr error) {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -133,12 +134,17 @@ func (s *Session) Show(ctx context.Context, response json.RawMessage) (resultErr
 			"The source changed during analysis.", "Keep the source unchanged and retry the analysis.")
 	}
 	data := struct {
-		Source string          `json:"source"`
-		Name   string          `json:"name"`
-		Result json.RawMessage `json:"result"`
+		Source        string          `json:"source"`
+		Name          string          `json:"name"`
+		Result        json.RawMessage `json:"result"`
+		FieldOrderURL string          `json:"fieldOrderUrl,omitempty"`
 	}{
 		Source: "./source/" + url.PathEscape(s.sourceInfo.Name()),
 		Name:   s.sourceInfo.Name(), Result: response,
+	}
+	s.fieldOrders = fieldOrders
+	if fieldOrders != nil {
+		data.FieldOrderURL = "./field-order"
 	}
 	var err error
 	s.sessionJSON, err = json.Marshal(data)
@@ -223,14 +229,18 @@ func (s *Session) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, "Forbidden", http.StatusForbidden)
 		return
 	}
-	if request.Method != http.MethodGet && request.Method != http.MethodHead {
-		writer.Header().Set("Allow", "GET, HEAD")
-		http.Error(writer, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 	name, found := strings.CutPrefix(request.URL.Path, s.prefix)
 	if !found || (name != "" && !fs.ValidPath(name)) {
 		http.NotFound(writer, request)
+		return
+	}
+	if name == "field-order" && s.fieldOrders != nil {
+		s.serveFieldOrder(writer, request)
+		return
+	}
+	if request.Method != http.MethodGet && request.Method != http.MethodHead {
+		writer.Header().Set("Allow", "GET, HEAD")
+		http.Error(writer, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 	if name == s.sourcePath {
@@ -273,6 +283,55 @@ func (s *Session) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 		writer.Header().Set("Content-Type", contentType)
 	}
 	http.ServeContent(writer, request, name, time.Time{}, bytes.NewReader(body))
+}
+
+func (s *Session) serveFieldOrder(writer http.ResponseWriter, request *http.Request) {
+	switch request.Method {
+	case http.MethodGet, http.MethodHead:
+		order, err := s.fieldOrders.Load(request.Context())
+		if err != nil {
+			s.server.ErrorLog.Print("Analyzer field order could not be read from azd settings.")
+			http.Error(writer, "Analyzer field order could not be read from azd settings.", http.StatusInternalServerError)
+			return
+		}
+		body, err := json.Marshal(order)
+		if err != nil {
+			s.server.ErrorLog.Print("Analyzer field order could not be encoded.")
+			http.Error(writer, "Analyzer field order could not be encoded.", http.StatusInternalServerError)
+			return
+		}
+		writer.Header().Set("Content-Type", "application/json; charset=utf-8")
+		http.ServeContent(writer, request, "field-order.json", time.Time{}, bytes.NewReader(body))
+	case http.MethodPut:
+		contentType, _, err := mime.ParseMediaType(request.Header.Get("Content-Type"))
+		if err != nil || contentType != "application/json" {
+			http.Error(writer, "Field order requires application/json.", http.StatusUnsupportedMediaType)
+			return
+		}
+		body, err := io.ReadAll(http.MaxBytesReader(writer, request.Body, maxFieldOrderSize))
+		if err != nil {
+			code := http.StatusBadRequest
+			if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
+				code = http.StatusRequestEntityTooLarge
+			}
+			http.Error(writer, "Field order could not be read within the 1 MiB limit.", code)
+			return
+		}
+		var order FieldOrder
+		if err := json.Unmarshal(body, &order); err != nil || validateFieldOrder(order) != nil {
+			http.Error(writer, "Field order requires unique direct child JSON-pointer paths.", http.StatusBadRequest)
+			return
+		}
+		if err := s.fieldOrders.Save(request.Context(), order); err != nil {
+			s.server.ErrorLog.Print("Analyzer field order was not saved to azd settings.")
+			http.Error(writer, "Analyzer field order was not saved to azd settings.", http.StatusInternalServerError)
+			return
+		}
+		writer.WriteHeader(http.StatusNoContent)
+	default:
+		writer.Header().Set("Allow", "GET, HEAD, PUT")
+		http.Error(writer, "Method not allowed", http.StatusMethodNotAllowed)
+	}
 }
 
 func (s *Session) sourceUnchanged() bool {

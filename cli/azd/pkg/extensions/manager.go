@@ -665,7 +665,11 @@ func (m *Manager) updateInstalled(id string, update func(*Extension) *Extension)
 		return ErrInstalledExtensionNotFound
 	}
 
-	installed[id] = update(current)
+	updated := update(current)
+	if updated.Viewer == nil {
+		updated.Viewer = slices.Clone(current.Viewer)
+	}
+	installed[id] = updated
 	previous, _ := m.userConfig.Get(installedConfigKey)
 	if err := m.userConfig.Set(installedConfigKey, installed); err != nil {
 		return fmt.Errorf("failed to set extensions section: %w", err)
@@ -989,6 +993,10 @@ func (m *Manager) installInternal(
 		return nil, fmt.Errorf("failed to list installed extensions: %w", err)
 	}
 
+	var viewerSettings json.RawMessage
+	if previous := extensions[extension.Id]; previous != nil {
+		viewerSettings = slices.Clone(previous.Viewer)
+	}
 	extensions[extension.Id] = &Extension{
 		Id:             extension.Id,
 		Capabilities:   selectedVersion.Capabilities,
@@ -1002,6 +1010,7 @@ func (m *Manager) installInternal(
 		SourceCategory: extension.SourceCategoryOrUnknown(),
 		Providers:      selectedVersion.Providers,
 		McpConfig:      selectedVersion.McpConfig,
+		Viewer:         viewerSettings,
 		// Declared dependencies are recorded even when SkipDependencies is set: they describe
 		// the installed version, and uninstall planning relies on them to protect dependencies.
 		Dependencies:          slices.Clone(selectedVersion.Dependencies),
@@ -1351,6 +1360,13 @@ func (m *Manager) prepareUpgradeRecovery(
 					"failed to save restored installed extension metadata; backup retained at %q; installed files at %q: %w",
 					backupDir, extensionDir, err,
 				)
+			}
+		} else if len(previous.Viewer) > 0 {
+			if err := m.updateInstalled(replacementID, func(record *Extension) *Extension {
+				record.Viewer = slices.Clone(previous.Viewer)
+				return record
+			}); err != nil {
+				return fmt.Errorf("failed to preserve Viewer settings; backup retained at %q: %w", backupDir, err)
 			}
 		}
 		if err := osutil.RemoveAll(ctx, backupDir); err != nil {

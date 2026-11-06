@@ -221,9 +221,66 @@ new extension build. Node/npm are only needed by the separate frontend producer,
 not by Go builds or installed viewing.
 
 Preparation failures are written to diagnostic output, not result JSON, and
-stop before analysis or browser startup. The Viewer is read-only and makes no
+stop before analysis or browser startup. Source documents and analysis results remain read-only; the Viewer makes no
 additional Azure calls. Omit `--view` (or use `--view=false`) to retain ordinary
 analysis without resource preparation or the local service.
+
+#### Viewer preferences
+
+The app title bar is removed; the document toolbar still includes its filename,
+page navigation and zoom. Preview names and values use 12.5px text, the purple
+name header matches selected rows, and the confidence badge remains 11px.
+Low-confidence table values use `#F6C5CC`, while scalar colors and confidence
+classification remain unchanged.
+
+Pointer previews are transparent to mouse hits and dismiss immediately when
+the pointer leaves the actual field/source region. Clicking keeps selection,
+not a persistent popup; keyboard focus previews and Escape remain available.
+Use results or full-value details to scroll and copy long values. Objects start
+collapsed and nonempty tables expanded. Fields Settings includes **Collapse all
+object fields** and **Expand all object values**, including nested objects.
+These do not collapse tables or create order customizations; clear search before
+using them because search temporarily expands matching groups.
+
+Only an actual reorder writes an analyzer override. The partial configuration
+below omits installation metadata that must be preserved:
+
+```json
+{
+  "extension": {
+    "installed": {
+      "azure.ai.content-understanding": {
+        "Viewer": {
+          "fieldOrderByAnalyzer": {
+            "https://resource.services.ai.azure.com/contentunderstanding#prebuilt-invoice": {
+              "$root": ["/InvoiceId", "/VendorName", "/LineItems"]
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+The resource endpoint is normalized; file paths and API versions are not part
+of the key. Nested sibling orders use escaped, content-relative JSON Pointer
+paths. Stale paths are ignored for display and new fields remain visible.
+Reset order removes only the current analyzer's override, not other preferences
+or existing CU defaults under `extensions.ai-content-understanding`.
+
+The optional session-local `fieldOrderUrl` supports GET/HEAD and PUT JSON
+(maximum 1 MiB). It has the same host, origin and session-prefix checks as
+source/result serving; other routes remain read-only. Writes reload the raw
+azd settings after locking, merge only this override and atomically replace
+the file. Read/write failures are explicit; failed reads disable reordering
+without hiding valid results, and failed writes restore the last confirmed
+order. The frontend serializes rapid changes.
+
+The paired Viewer/extension enables this bridge. An azd build containing opaque
+`Viewer` preservation is needed to retain it through installation metadata
+updates and extension replacement; older azd versions may discard the unknown
+field. This local source change does not replace installed CLI binaries.
 
 ## Create a custom analyzer
 

@@ -44,6 +44,14 @@ The dev registry serves as a staging area for extensions before they graduate to
 
 ### Communication
 
+Installed extension records may contain an opaque, extension-owned `Viewer`
+JSON section. The host preserves it when updating installation metadata or
+replacing an extension, but does not interpret the viewer's schema. Literal
+extension IDs remain keys under `extension.installed`; do not treat dots in an
+ID as configuration path separators. See the CU extension's
+[viewer preferences](../../cli/azd/extensions/azure.ai.content-understanding/docs/usage.md#viewer-preferences)
+for the scoped read/write protocol and compatibility requirements.
+
 The gRPC broker (`pkg/grpcbroker`) manages bidirectional communication. Extensions can both:
 
 - **Receive calls** from azd (e.g., "build this service")

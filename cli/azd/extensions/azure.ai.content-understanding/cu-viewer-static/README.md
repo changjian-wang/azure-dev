@@ -8,13 +8,16 @@ not served to the browser.
 ## Current source
 
 - Repository: cu-viewer.
-- Source commit: `c80dd4d5e5f2c4767697e741599bd5eb8905f7d0`.
+- Source commit: `d44a748fe322ed79a1f77eb17fb1c6b0de1276eb`.
 - Frontend package version: `0.0.0` (local preview source, not a published npm dependency).
 - Build command: `npm run build:viewer -- --configLoader runner`.
-- Imported on: 2026-11-05.
+- Imported on: 2026-11-06.
 - Payload: 225 plain files, including the root licenses.
 
-This copy uses the current committed Viewer UI from the source revision above.
+This local preview includes the header-free shell, pointer-transparent temporary
+previews, shared typography/colors, independent object expansion and the optional
+azd field-order bridge. It was built from the committed source above, not an
+official extension release.
 
 ## Manual updates
 

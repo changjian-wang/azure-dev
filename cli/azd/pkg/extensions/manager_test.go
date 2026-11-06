@@ -2020,10 +2020,18 @@ func Test_UpdateInstalled_UpdatesConfigAndInvalidatesCache(t *testing.T) {
 	t.Parallel()
 
 	manager := newTestManager(t)
+	viewer := json.RawMessage(`{"fieldOrderByAnalyzer":{"analyzer-a":{"$root":["/B","/A"]}}}`)
+	otherViewer := json.RawMessage(`{"fieldOrderByAnalyzer":{"analyzer-b":{"$root":["/C"]}}}`)
 	require.NoError(t, manager.userConfig.Set(installedConfigKey, map[string]*Extension{
 		"test.extension": {
 			Id:      "test.extension",
 			Version: "1.0.0",
+			Viewer:  viewer,
+		},
+		"other.extension": {
+			Id:      "other.extension",
+			Version: "1.0.0",
+			Viewer:  otherViewer,
 		},
 	}))
 
@@ -2044,6 +2052,10 @@ func Test_UpdateInstalled_UpdatesConfigAndInvalidatesCache(t *testing.T) {
 	updated, err := manager.GetInstalled(FilterOptions{Id: "test.extension"})
 	require.NoError(t, err)
 	require.Equal(t, "2.0.0", updated.Version)
+	require.JSONEq(t, string(viewer), string(updated.Viewer))
+	other, err := manager.GetInstalled(FilterOptions{Id: "other.extension"})
+	require.NoError(t, err)
+	require.JSONEq(t, string(otherViewer), string(other.Viewer))
 }
 
 func Test_UpdateInstalled_MissingExtension(t *testing.T) {
@@ -2188,6 +2200,20 @@ func Test_Install_WithMcpConfig(t *testing.T) {
 
 	// Verify the extension has MCP server capability
 	require.True(t, installedExtension.HasCapability(McpServerCapability))
+
+	viewer := json.RawMessage(`{"fieldOrderByAnalyzer":{"analyzer-a":{"$root":["/B","/A"]}}}`)
+	otherViewer := json.RawMessage(`{"fieldOrderByAnalyzer":{"analyzer-b":{"$root":["/C"]}}}`)
+	installedExtension.Viewer = viewer
+	installedExtension.Version = "0.9.0"
+	installed["other.extension"] = &Extension{Id: "other.extension", Version: "1.0.0", Viewer: otherViewer}
+	require.NoError(t, manager.userConfig.Set(installedConfigKey, installed))
+	manager.installed = nil
+	_, _, err = manager.Upgrade(*mockContext.Context, extensions[0], DefaultUpgradeOptions(""))
+	require.NoError(t, err)
+	reinstalled, err := manager.ListInstalled()
+	require.NoError(t, err)
+	require.JSONEq(t, string(viewer), string(reinstalled["test.mcp.extension"].Viewer))
+	require.JSONEq(t, string(otherViewer), string(reinstalled["other.extension"].Viewer))
 }
 
 // Helper function to convert extension slice to ID set

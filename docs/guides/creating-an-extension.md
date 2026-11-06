@@ -184,6 +184,16 @@ multiple handlers and workflow steps are resolved.
 
 ## Detailed Reference
 
+Extension-owned Viewer preferences can live in the literal installed extension
+entry's `Viewer` section. Preserve installation metadata and unrelated user
+settings, write only explicit customizations, and use stable resource/analyzer
+identities rather than document paths. The core retains this opaque section
+through metadata updates and replacement; require a compatible host build before
+relying on that lifecycle guarantee. See
+[installed Viewer configuration](../architecture/extension-framework.md#communication)
+and the CU extension's
+[viewer preferences](../../cli/azd/extensions/azure.ai.content-understanding/docs/usage.md#viewer-preferences).
+
 Commands that do not need the selected azd environment can emit
 `"launch": {"noAzdEnvironment": true}` on their command metadata. These launch
 settings are per-command, not inherited; they skip loading the selected azd

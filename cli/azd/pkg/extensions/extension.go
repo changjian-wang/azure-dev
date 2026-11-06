@@ -6,6 +6,7 @@ package extensions
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"slices"
 	"sync"
@@ -28,6 +29,8 @@ type Extension struct {
 	Providers         []Provider       `json:"providers,omitempty"`
 	McpConfig         *McpConfig       `json:"mcp,omitempty"`
 	LastUpdateWarning string           `json:"lastUpdateWarning,omitempty"`
+	// Viewer is extension-owned configuration, retained without interpreting its schema.
+	Viewer json.RawMessage `json:"Viewer,omitempty"`
 	// Dependencies is the dependency list declared by the installed version, recorded at
 	// install time so dependency checks work without registry access (bundles, delisted
 	// extensions). Records written before this field existed have none.

@@ -19,6 +19,7 @@ import (
 	"azure.ai.content-understanding/internal/cuclient"
 	"azure.ai.content-understanding/internal/exterrors"
 	"azure.ai.content-understanding/internal/testutil"
+	"azure.ai.content-understanding/internal/viewer"
 
 	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
 	"github.com/stretchr/testify/assert"
@@ -29,6 +30,7 @@ type fakeAnalyzeViewer struct {
 	prepares, shows, closes       int
 	input                         analysis.Input
 	response                      json.RawMessage
+	fieldOrders                   viewer.FieldOrderStore
 	writer                        io.Writer
 	prepareErr, showErr, closeErr error
 	onShow                        func()
@@ -45,9 +47,10 @@ func (v *fakeAnalyzeViewer) prepare(
 	return v, nil
 }
 
-func (v *fakeAnalyzeViewer) Show(_ context.Context, response json.RawMessage) error {
+func (v *fakeAnalyzeViewer) Show(_ context.Context, response json.RawMessage, fieldOrders viewer.FieldOrderStore) error {
 	v.shows++
 	v.response = bytes.Clone(response)
+	v.fieldOrders = fieldOrders
 	if v.onShow != nil {
 		v.onShow()
 	}
@@ -113,6 +116,7 @@ func TestAnalyzeViewUsesOneCompleteResponseWithoutChangingOutput(t *testing.T) {
 			assert.Equal(t, 1, f.closes)
 			assert.Equal(t, 1, view.prepares)
 			assert.Equal(t, 1, view.shows)
+			assert.NotNil(t, view.fieldOrders)
 			assert.Equal(t, 1, view.closes)
 			assert.Equal(t, path, view.input.Path)
 			assert.JSONEq(t, analyzeEnvelope, string(view.response))

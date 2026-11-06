@@ -92,7 +92,8 @@ func (f *analyzeFixture) rootWithViewer(openViewer viewerFactory) *cobra.Command
 		}
 		return &serviceSession{
 			client: f.client, analyzer: analyzer, apiVersion: version,
-			close: func() { f.closes++ },
+			endpoint: "https://test.services.ai.azure.com/contentunderstanding",
+			close:    func() { f.closes++ },
 			confirm: func(_ context.Context, stringValue string) (bool, error) {
 				f.prompts = append(f.prompts, stringValue)
 				if f.onPrompt != nil {

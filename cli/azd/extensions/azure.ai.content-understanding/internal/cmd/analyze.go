@@ -12,6 +12,7 @@ import (
 	"azure.ai.content-understanding/internal/config"
 	"azure.ai.content-understanding/internal/cuclient"
 	"azure.ai.content-understanding/internal/exterrors"
+	"azure.ai.content-understanding/internal/viewer"
 
 	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
 	"github.com/spf13/cobra"
@@ -194,6 +195,13 @@ func runAnalyzeCommand(
 	if err := cuclient.ValidateAnalyzerID(session.analyzer); err != nil {
 		return err
 	}
+	var fieldOrders viewer.FieldOrderStore
+	if view != nil {
+		fieldOrders, err = viewer.NewFieldOrderStore(session.endpoint, session.analyzer)
+		if err != nil {
+			return err
+		}
+	}
 	mode := cuclient.AnalysisModeAsync
 	if options.inline {
 		if session.apiVersion == cuclient.DefaultAPIVersion {
@@ -239,7 +247,7 @@ func runAnalyzeCommand(
 		return err
 	}
 	if view != nil {
-		err := view.Show(ctx, execution.Response)
+		err := view.Show(ctx, execution.Response, fieldOrders)
 		if err != nil && ctx.Err() == nil {
 			_, diagnosticErr := fmt.Fprintln(cmd.ErrOrStderr(),
 				"Analysis completed, but CU Viewer could not be opened. Existing output and saved files were retained.")
