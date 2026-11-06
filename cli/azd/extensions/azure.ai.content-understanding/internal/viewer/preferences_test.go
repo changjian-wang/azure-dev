@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFieldOrderPersistsAcrossSessionsAndIsolatesAnalyzersAndResources(t *testing.T) {
+func TestFieldOrderPersistsAcrossSessionsAndIsolatesAnalyzers(t *testing.T) {
 	directory := t.TempDir()
 	t.Setenv("AZD_CONFIG_DIR", directory)
 	path := filepath.Join(directory, "config.json")
@@ -29,11 +29,9 @@ func TestFieldOrderPersistsAcrossSessionsAndIsolatesAnalyzersAndResources(t *tes
 		"extension":{"installed":{"azure.ai.content-understanding":{"version":"0.1.1-preview","Viewer":{"other":true}},
 		"another.extension":{"version":"1.0.0"}}}}`
 	require.NoError(t, os.WriteFile(path, []byte(original), 0o600))
-	first, err := NewFieldOrderStore("https://RESOURCE.services.ai.azure.com/", "prebuilt-invoice")
+	first, err := NewFieldOrderStore("prebuilt-invoice")
 	require.NoError(t, err)
-	second, err := NewFieldOrderStore("https://resource.services.ai.azure.com", "custom-invoice")
-	require.NoError(t, err)
-	otherResource, err := NewFieldOrderStore("https://other.services.ai.azure.com", "prebuilt-invoice")
+	second, err := NewFieldOrderStore("custom-invoice")
 	require.NoError(t, err)
 	order, err := first.Load(t.Context())
 	require.NoError(t, err)
@@ -46,8 +44,7 @@ func TestFieldOrderPersistsAcrossSessionsAndIsolatesAnalyzersAndResources(t *tes
 	b := FieldOrder{"$root": {"/Other"}}
 	require.NoError(t, first.Save(t.Context(), a))
 	require.NoError(t, second.Save(t.Context(), b))
-	require.NoError(t, otherResource.Save(t.Context(), b))
-	reopened, err := NewFieldOrderStore("https://resource.services.ai.azure.com/contentunderstanding", "prebuilt-invoice")
+	reopened, err := NewFieldOrderStore("prebuilt-invoice")
 	require.NoError(t, err)
 	order, err = reopened.Load(t.Context())
 	require.NoError(t, err)
@@ -56,11 +53,9 @@ func TestFieldOrderPersistsAcrossSessionsAndIsolatesAnalyzersAndResources(t *tes
 	order, err = first.Load(t.Context())
 	require.NoError(t, err)
 	assert.Empty(t, order)
-	for _, store := range []FieldOrderStore{second, otherResource} {
-		order, err := store.Load(t.Context())
-		require.NoError(t, err)
-		assert.Equal(t, b, order)
-	}
+	order, err = second.Load(t.Context())
+	require.NoError(t, err)
+	assert.Equal(t, b, order)
 	body, err = os.ReadFile(path)
 	require.NoError(t, err)
 	assert.Contains(t, string(body), "9007199254740993")
@@ -83,14 +78,12 @@ func TestFieldOrderPersistsAcrossSessionsAndIsolatesAnalyzersAndResources(t *tes
 	require.NoError(t, json.Unmarshal(saved.Extension.Installed["azure.ai.content-understanding"], &entry))
 	assert.Equal(t, "0.1.1-preview", entry.Version)
 	assert.True(t, entry.Viewer.Other)
-	assert.Len(t, entry.Viewer.Orders, 2)
-	assert.NotContains(t, entry.Viewer.Orders,
-		"https://resource.services.ai.azure.com/contentunderstanding#prebuilt-invoice")
+	assert.Equal(t, map[string]FieldOrder{"custom-invoice": b}, entry.Viewer.Orders)
 }
 
 func TestDefaultFieldOrderDoesNotCreateConfiguration(t *testing.T) {
 	t.Setenv("AZD_CONFIG_DIR", t.TempDir())
-	store, err := NewFieldOrderStore("https://resource.services.ai.azure.com", "prebuilt-invoice")
+	store, err := NewFieldOrderStore("prebuilt-invoice")
 	require.NoError(t, err)
 	order, err := store.Load(t.Context())
 	require.NoError(t, err)
@@ -104,7 +97,7 @@ func TestConcurrentAnalyzerCustomizationsMergeFreshConfiguration(t *testing.T) {
 	t.Setenv("AZD_CONFIG_DIR", t.TempDir())
 	stores := make([]FieldOrderStore, 8)
 	for index := range stores {
-		store, err := NewFieldOrderStore("https://resource.services.ai.azure.com", "analyzer-"+string(rune('a'+index)))
+		store, err := NewFieldOrderStore("analyzer-" + string(rune('a'+index)))
 		require.NoError(t, err)
 		stores[index] = store
 	}
@@ -150,12 +143,107 @@ func TestInvalidFieldOrdersAndCorruptSettingsAreNotWritten(t *testing.T) {
 	}
 }
 
-func TestFieldOrderRejectsCredentialBearingEndpointsWithoutDisclosure(t *testing.T) {
+func TestFieldOrderRejectsURLAnalyzerIDsWithoutDisclosure(t *testing.T) {
 	_, err := NewFieldOrderStore(
-		"https://private-user:private-pass@resource.services.ai.azure.com?sig=private-sig#private-fragment",
-		"prebuilt-invoice")
+		"https://private-user:private-pass@resource.services.ai.azure.com?sig=private-sig#private-fragment")
 	require.Error(t, err)
 	assert.NotContains(t, err.Error(), "private")
+}
+
+func TestLegacyFieldOrdersMigrateWithoutEndpoints(t *testing.T) {
+	for _, operation := range []string{"load", "save"} {
+		t.Run(operation, func(t *testing.T) {
+			t.Setenv("AZD_CONFIG_DIR", t.TempDir())
+			store, err := NewFieldOrderStore("prebuilt-invoice")
+			require.NoError(t, err)
+			path := store.(*fieldOrderStore).path
+			original := `{"marker":9007199254740993,"extensions":{"keep":true},
+				"extension":{"installed":{"azure.ai.content-understanding":{"version":"1.0.0",
+				"Viewer":{"other":true,"fieldOrderByAnalyzer":{
+				"https://private-user:private-pass@first.example?sig=private-sig#prebuilt-invoice":{"$root":["/B","/A"]},
+				"https://second.example/contentunderstanding#prebuilt-invoice":{"$root":["/B","/A"]},
+				"prebuilt-invoice":{"$root":["/B","/A"]},
+				"https://first.example#prebuilt-layout":{"$root":["/Other"]}}}}}}}`
+			require.NoError(t, os.WriteFile(path, []byte(original), 0o600))
+			a := FieldOrder{"$root": {"/B", "/A"}}
+			if operation == "load" {
+				order, err := store.Load(t.Context())
+				require.NoError(t, err)
+				assert.Equal(t, a, order)
+			} else {
+				require.NoError(t, store.Save(t.Context(), a))
+			}
+			body, err := os.ReadFile(path)
+			require.NoError(t, err)
+			assert.NotContains(t, string(body), "https://")
+			assert.NotContains(t, string(body), "private")
+			assert.Contains(t, string(body), "9007199254740993")
+			var saved struct {
+				Extensions map[string]bool `json:"extensions"`
+				Extension  struct {
+					Installed map[string]struct {
+						Version string `json:"version"`
+						Viewer  struct {
+							Other  bool                  `json:"other"`
+							Orders map[string]FieldOrder `json:"fieldOrderByAnalyzer"`
+						} `json:"Viewer"`
+					} `json:"installed"`
+				} `json:"extension"`
+			}
+			require.NoError(t, json.Unmarshal(body, &saved))
+			entry := saved.Extension.Installed["azure.ai.content-understanding"]
+			assert.Equal(t, "1.0.0", entry.Version)
+			assert.True(t, entry.Viewer.Other)
+			assert.True(t, saved.Extensions["keep"])
+			assert.Equal(t, map[string]FieldOrder{
+				"prebuilt-invoice": a, "prebuilt-layout": {"$root": {"/Other"}},
+			}, entry.Viewer.Orders)
+			_, err = store.Load(t.Context())
+			require.NoError(t, err)
+			unchanged, err := os.ReadFile(path)
+			require.NoError(t, err)
+			assert.Equal(t, body, unchanged)
+		})
+	}
+}
+
+func TestLegacyFieldOrderMigrationDoesNotWriteInvalidCanonicalOrder(t *testing.T) {
+	t.Setenv("AZD_CONFIG_DIR", t.TempDir())
+	store, err := NewFieldOrderStore("prebuilt-invoice")
+	require.NoError(t, err)
+	path := store.(*fieldOrderStore).path
+	original := `{"extension":{"installed":{"azure.ai.content-understanding":{"Viewer":{"fieldOrderByAnalyzer":{
+		"prebuilt-invoice":null,"https://private.example#prebuilt-layout":{"$root":["/Other"]}}}}}}}`
+	require.NoError(t, os.WriteFile(path, []byte(original), 0o600))
+	_, err = store.Load(t.Context())
+	require.Error(t, err)
+	assert.NotContains(t, err.Error(), "private")
+	body, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Equal(t, original, string(body))
+}
+
+func TestConflictingLegacyFieldOrdersDoNotWriteOrDiscloseEndpoints(t *testing.T) {
+	for _, secondKey := range []string{"prebuilt-invoice", "https://second.example#prebuilt-invoice"} {
+		t.Run(secondKey, func(t *testing.T) {
+			t.Setenv("AZD_CONFIG_DIR", t.TempDir())
+			store, err := NewFieldOrderStore("prebuilt-invoice")
+			require.NoError(t, err)
+			path := store.(*fieldOrderStore).path
+			original := `{"extension":{"installed":{"azure.ai.content-understanding":{"Viewer":{"fieldOrderByAnalyzer":{
+				"https://private-user:private-pass@first.example?sig=private-sig#prebuilt-invoice":{"$root":["/B","/A"]},
+				"` + secondKey + `":{"$root":["/A","/B"]}}}}}}}`
+			require.NoError(t, os.WriteFile(path, []byte(original), 0o600))
+			_, err = store.Load(t.Context())
+			require.ErrorContains(t, err, "conflicting saved field orders")
+			assert.NotContains(t, err.Error(), "https://")
+			assert.NotContains(t, err.Error(), "private")
+			require.Error(t, store.Save(t.Context(), FieldOrder{"$root": {"/C"}}))
+			body, err := os.ReadFile(path)
+			require.NoError(t, err)
+			assert.Equal(t, original, string(body))
+		})
+	}
 }
 
 type memoryFieldOrders struct {

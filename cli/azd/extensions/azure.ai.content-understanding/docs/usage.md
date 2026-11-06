@@ -252,7 +252,7 @@ below omits installation metadata that must be preserved:
       "azure.ai.content-understanding": {
         "Viewer": {
           "fieldOrderByAnalyzer": {
-            "https://resource.services.ai.azure.com/contentunderstanding#prebuilt-invoice": {
+            "prebuilt-invoice": {
               "$root": ["/InvoiceId", "/VendorName", "/LineItems"]
             }
           }
@@ -263,11 +263,19 @@ below omits installation metadata that must be preserved:
 }
 ```
 
-The resource endpoint is normalized; file paths and API versions are not part
-of the key. Nested sibling orders use escaped, content-relative JSON Pointer
+Only the full analyzer ID is used as the key. The same ID shares its order across
+resources; endpoints, file paths and API versions are not stored in preference
+keys. Nested sibling orders use escaped, content-relative JSON Pointer
 paths. Stale paths are ignored for display and new fields remain visible.
 Reset order removes only the current analyzer's override, not other preferences
 or existing CU defaults under `extensions.ai-content-understanding`.
+
+Legacy `endpoint#analyzerId` keys migrate on the first preference read or save.
+Existing order and other settings are retained; identical overrides merge.
+Conflicting overrides for the same analyzer stop migration with an explicit
+error and leave the file unchanged. Choose one order before retrying.
+Migration does not create an uncustomized analyzer's default order or modify
+the CU endpoint setting used for service connections.
 
 The optional session-local `fieldOrderUrl` supports GET/HEAD and PUT JSON
 (maximum 1 MiB). It has the same host, origin and session-prefix checks as

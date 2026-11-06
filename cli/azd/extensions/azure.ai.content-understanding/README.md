@@ -224,8 +224,12 @@ all nested objects without changing table state or field order.
 
 Customized field order is saved in azd user settings under the literal
 `extension.installed["azure.ai.content-understanding"].Viewer.fieldOrderByAnalyzer`
-hierarchy, scoped by normalized resource endpoint and analyzer ID. Merely
-opening a file writes no default order. Reset removes only this analyzer's
+hierarchy, keyed only by the full analyzer ID, such as `prebuilt-invoice`.
+Preference keys contain no endpoint, file path or API version; the same analyzer
+ID reuses its order across resources. Legacy endpoint-prefixed keys migrate
+without losing customized order or other settings. Conflicting orders for the
+same analyzer fail explicitly without modifying the configuration.
+Merely opening a file writes no default order. Reset removes only this analyzer's
 override. This requires the paired Viewer and host; preserving `Viewer` during
 extension replacement also requires an azd core build containing the installed
 record compatibility fix. Existing installed binaries are not automatically updated.

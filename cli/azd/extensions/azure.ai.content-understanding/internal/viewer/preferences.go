@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"time"
@@ -36,11 +37,7 @@ type fieldOrderStore struct {
 
 var fieldOrderPointer = regexp.MustCompile(`^(/([^~/]|~[01])*)+$`)
 
-func NewFieldOrderStore(endpoint, analyzer string) (FieldOrderStore, error) {
-	normalized, err := cuclient.NormalizeEndpoint(endpoint)
-	if err != nil {
-		return nil, err
-	}
+func NewFieldOrderStore(analyzer string) (FieldOrderStore, error) {
 	if err := cuclient.ValidateAnalyzerID(analyzer); err != nil {
 		return nil, err
 	}
@@ -48,7 +45,7 @@ func NewFieldOrderStore(endpoint, analyzer string) (FieldOrderStore, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &fieldOrderStore{path: path, analyzer: strings.ToLower(normalized) + "#" + analyzer}, nil
+	return &fieldOrderStore{path: path, analyzer: analyzer}, nil
 }
 
 func validateFieldOrder(order FieldOrder) error {
@@ -86,6 +83,53 @@ var fieldOrderConfigKeys = []string{
 	"extension", "installed", "azure.ai.content-understanding", "Viewer", "fieldOrderByAnalyzer",
 }
 
+func decodeSavedFieldOrder(raw json.RawMessage) (FieldOrder, error) {
+	var order FieldOrder
+	if err := json.Unmarshal(raw, &order); err != nil {
+		return nil, errors.New("saved analyzer field order must be a parent-path mapping")
+	}
+	if err := validateFieldOrder(order); err != nil {
+		return nil, err
+	}
+	return order, nil
+}
+
+func migrateFieldOrderKeys(orders map[string]json.RawMessage) (bool, error) {
+	migrated := false
+	for key, raw := range orders {
+		order, err := decodeSavedFieldOrder(raw)
+		if err != nil {
+			return false, err
+		}
+		if cuclient.ValidateAnalyzerID(key) == nil {
+			continue
+		}
+		separator := strings.LastIndex(key, "#")
+		if !strings.HasPrefix(strings.ToLower(key), "https://") || separator < 0 {
+			return false, errors.New("saved field order keys must be analyzer IDs")
+		}
+		analyzer := key[separator+1:]
+		if err := cuclient.ValidateAnalyzerID(analyzer); err != nil {
+			return false, errors.New("legacy field order key must end with a valid analyzer ID")
+		}
+		if existing, found := orders[analyzer]; found {
+			saved, err := decodeSavedFieldOrder(existing)
+			if err != nil {
+				return false, err
+			}
+			if !reflect.DeepEqual(saved, order) {
+				return false, fmt.Errorf(
+					"conflicting saved field orders for analyzer %q; keep one order before migrating", analyzer)
+			}
+		} else {
+			orders[analyzer] = raw
+		}
+		delete(orders, key)
+		migrated = true
+	}
+	return migrated, nil
+}
+
 func (s *fieldOrderStore) load() ([]map[string]json.RawMessage, error) {
 	root := make(map[string]json.RawMessage)
 	body, err := os.ReadFile(s.path)
@@ -118,22 +162,59 @@ func (s *fieldOrderStore) Load(ctx context.Context) (FieldOrder, error) {
 	if err != nil {
 		return nil, err
 	}
-	order := make(FieldOrder)
-	if raw, found := layers[len(layers)-1][s.analyzer]; found {
-		if err := json.Unmarshal(raw, &order); err != nil {
-			return nil, errors.New("saved analyzer field order must be a parent-path mapping")
+	migrated, err := migrateFieldOrderKeys(layers[len(layers)-1])
+	if err != nil {
+		return nil, err
+	}
+	if migrated {
+		if err := s.update(ctx, migrateFieldOrderKeys); err != nil {
+			return nil, err
 		}
-		if err := validateFieldOrder(order); err != nil {
+		layers, err = s.load()
+		if err != nil {
 			return nil, err
 		}
 	}
-	return order, nil
+	if raw, found := layers[len(layers)-1][s.analyzer]; found {
+		return decodeSavedFieldOrder(raw)
+	}
+	return make(FieldOrder), nil
 }
 
-func (s *fieldOrderStore) Save(ctx context.Context, order FieldOrder) (resultErr error) {
+func (s *fieldOrderStore) Save(ctx context.Context, order FieldOrder) error {
 	if err := validateFieldOrder(order); err != nil {
 		return err
 	}
+	return s.update(ctx, func(orders map[string]json.RawMessage) (bool, error) {
+		migrated, err := migrateFieldOrderKeys(orders)
+		if err != nil {
+			return false, err
+		}
+		customized := make(FieldOrder)
+		for parent, children := range order {
+			if len(children) > 0 {
+				customized[parent] = children
+			}
+		}
+		if len(customized) == 0 {
+			if _, found := orders[s.analyzer]; !found {
+				return migrated, nil
+			}
+			delete(orders, s.analyzer)
+		} else {
+			body, err := json.Marshal(customized)
+			if err != nil {
+				return false, err
+			}
+			orders[s.analyzer] = body
+		}
+		return true, nil
+	})
+}
+
+func (s *fieldOrderStore) update(
+	ctx context.Context, edit func(map[string]json.RawMessage) (bool, error),
+) (resultErr error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	lock := flock.New(s.path + ".viewer.lock")
@@ -151,24 +232,12 @@ func (s *fieldOrderStore) Save(ctx context.Context, order FieldOrder) (resultErr
 	if err != nil {
 		return err
 	}
-	orders := layers[len(layers)-1]
-	customized := make(FieldOrder)
-	for parent, children := range order {
-		if len(children) > 0 {
-			customized[parent] = children
-		}
+	changed, err := edit(layers[len(layers)-1])
+	if err != nil {
+		return err
 	}
-	if len(customized) == 0 {
-		if _, found := orders[s.analyzer]; !found {
-			return nil
-		}
-		delete(orders, s.analyzer)
-	} else {
-		body, err := json.Marshal(customized)
-		if err != nil {
-			return err
-		}
-		orders[s.analyzer] = body
+	if !changed {
+		return nil
 	}
 	// Merge literal keys instead of passing the dotted extension ID to Config.Set.
 	for index := len(fieldOrderConfigKeys) - 1; index >= 0; index-- {

@@ -8,7 +8,7 @@ not served to the browser.
 ## Current source
 
 - Repository: cu-viewer.
-- Source commit: `d44a748fe322ed79a1f77eb17fb1c6b0de1276eb`.
+- Source baseline: `d44a748fe322ed79a1f77eb17fb1c6b0de1276eb`, with the native Confidence-label focus fix in the current working tree.
 - Frontend package version: `0.0.0` (local preview source, not a published npm dependency).
 - Build command: `npm run build:viewer -- --configLoader runner`.
 - Imported on: 2026-11-06.
@@ -16,8 +16,12 @@ not served to the browser.
 
 This local preview includes the header-free shell, pointer-transparent temporary
 previews, shared typography/colors, independent object expansion and the optional
-azd field-order bridge. It was built from the committed source above, not an
-official extension release.
+azd field-order bridge, including the native Confidence-label focus fix. It is a
+local working-tree preview, not an official extension release.
+
+The Go host keys saved field orders only by the full analyzer ID. Preference
+keys do not contain endpoints; legacy endpoint-prefixed keys migrate while
+preserving customized order and unrelated settings.
 
 ## Manual updates
 

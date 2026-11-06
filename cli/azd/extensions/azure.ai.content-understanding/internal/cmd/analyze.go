@@ -197,7 +197,7 @@ func runAnalyzeCommand(
 	}
 	var fieldOrders viewer.FieldOrderStore
 	if view != nil {
-		fieldOrders, err = viewer.NewFieldOrderStore(session.endpoint, session.analyzer)
+		fieldOrders, err = viewer.NewFieldOrderStore(session.analyzer)
 		if err != nil {
 			return err
 		}

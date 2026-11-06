@@ -48,7 +48,7 @@ func TestStaticViewerBrowserFixture(t *testing.T) {
 	if analyzer == "" {
 		analyzer = "browser-fixture"
 	}
-	fieldOrders, err := NewFieldOrderStore("https://viewer-test.services.ai.azure.com", analyzer)
+	fieldOrders, err := NewFieldOrderStore(analyzer)
 	require.NoError(t, err)
 	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
 	defer cancel()
