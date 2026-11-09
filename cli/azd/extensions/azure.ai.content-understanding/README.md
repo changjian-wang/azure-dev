@@ -216,11 +216,16 @@ stop it. Viewing does not change console or saved-result formats or make another
 CU request. See [local viewing](docs/usage.md#view-a-local-analysis-in-the-browser)
 for supported sources and incompatible options.
 
-The Viewer has no separate app title bar. Pointer previews dismiss immediately,
-do not intercept underlying fields, and remain independent of selection.
+The Viewer has no separate app title bar. Fields is hidden when no structured
+fields are returned; nonempty Markdown becomes the default view. Pointer
+previews dismiss immediately, do not intercept underlying fields, and remain
+independent of selection. Object previews use the same value summary as Fields
+and cover current-page descendant source bounds without enlarging hit areas.
 Full-value details provide persistent reading and copying. Objects start
 collapsed, tables start expanded, and Fields settings can expand or collapse
 all nested objects without changing table state or field order.
+Fields Settings uses a compact **Show Confidence** switch and full-width action
+rows with hover and keyboard-focus feedback, including **Reset Field Order**.
 
 Customized field order is saved in azd user settings under the literal
 `extension.installed["azure.ai.content-understanding"].Viewer.fieldOrderByAnalyzer`

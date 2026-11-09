@@ -8,16 +8,25 @@ not served to the browser.
 ## Current source
 
 - Repository: cu-viewer.
-- Source baseline: `d44a748fe322ed79a1f77eb17fb1c6b0de1276eb`, with the native Confidence-label focus fix in the current working tree.
+- Source commit: `15b8fa5a223d1f695f2d6011a9fb4b4d45dc9271` (clean producer worktree).
 - Frontend package version: `0.0.0` (local preview source, not a published npm dependency).
 - Build command: `npm run build:viewer -- --configLoader runner`.
-- Imported on: 2026-11-06.
+- Imported on: 2026-11-09.
 - Payload: 225 plain files, including the root licenses.
 
 This local preview includes the header-free shell, pointer-transparent temporary
 previews, shared typography/colors, independent object expansion and the optional
-azd field-order bridge, including the native Confidence-label focus fix. It is a
-local working-tree preview, not an official extension release.
+azd field-order bridge. Fieldless results default to nonempty Markdown without
+an empty Fields tab. Object previews show their value summary and the union
+bounds of current-page descendant sources. Preview field names use regular
+weight, Legend switches use compact visuals with unchanged hit areas, and
+Fields Settings has a Confidence switch plus full-width highlighted actions
+including Reset Field Order. This is a local development build, not an official
+extension release.
+
+The complete page and assets were imported together. Third-party notice and
+license text retains the source revision's canonical LF content; codec and
+worker binaries are copied byte-for-byte.
 
 The Go host keys saved field orders only by the full analyzer ID. Preference
 keys do not contain endpoints; legacy endpoint-prefixed keys migrate while

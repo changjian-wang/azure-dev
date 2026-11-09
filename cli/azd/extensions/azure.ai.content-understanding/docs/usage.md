@@ -230,8 +230,14 @@ analysis without resource preparation or the local service.
 The app title bar is removed; the document toolbar still includes its filename,
 page navigation and zoom. Preview names and values use 12.5px text, the purple
 name header matches selected rows, and the confidence badge remains 11px.
+Preview names use regular weight while values retain semibold emphasis.
 Low-confidence table values use `#F6C5CC`, while scalar colors and confidence
 classification remain unchanged.
+
+Fields is shown only when the current content has structured fields. Without
+fields, including table-only layout results, it is hidden and nonempty Markdown
+becomes the default; other available views remain valid fallbacks. Source-table
+requests do not select a hidden Fields tab or create extracted fields.
 
 Pointer previews are transparent to mouse hits and dismiss immediately when
 the pointer leaves the actual field/source region. Clicking keeps selection,
@@ -241,6 +247,14 @@ collapsed and nonempty tables expanded. Fields Settings includes **Collapse all
 object fields** and **Expand all object values**, including nested objects.
 These do not collapse tables or create order customizations; clear search before
 using them because search temporarily expands matching groups.
+
+Object hover and focus previews reuse the Fields summary without adding a group
+confidence score. Their display-only frame covers the union bounds of all
+current-page descendant sources; it does not enlarge hit areas, expand objects,
+replace selection or move the document. Fields Settings uses a compact
+**Show Confidence** switch with native label/Space activation. **Reset Field
+Order** and both object actions highlight their full rows on hover or keyboard
+focus when enabled. Existing order and expansion restrictions remain unchanged.
 
 Only an actual reorder writes an analyzer override. The partial configuration
 below omits installation metadata that must be preserved:
@@ -267,7 +281,7 @@ Only the full analyzer ID is used as the key. The same ID shares its order acros
 resources; endpoints, file paths and API versions are not stored in preference
 keys. Nested sibling orders use escaped, content-relative JSON Pointer
 paths. Stale paths are ignored for display and new fields remain visible.
-Reset order removes only the current analyzer's override, not other preferences
+Reset Field Order removes only the current analyzer's override, not other preferences
 or existing CU defaults under `extensions.ai-content-understanding`.
 
 Legacy `endpoint#analyzerId` keys migrate on the first preference read or save.
