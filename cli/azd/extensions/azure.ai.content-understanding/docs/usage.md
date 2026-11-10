@@ -293,6 +293,15 @@ replace selection or move the document. Fields Settings uses a compact
 Order** and both object actions highlight their full rows on hover or keyboard
 focus when enabled. Existing order and expansion restrictions remain unchanged.
 
+Paragraphs groups returned paragraphs by consecutive source-page sets while
+preserving their order. Its toolbar supports search, cyclic paragraph navigation
+and settings to collapse or expand page groups.
+
+Info replaces Metadata and shows metadata from all contents, usage, infos and
+warnings in a read-only hierarchy. It appears when any of these properties is
+returned, preserves explicit empty values, and provides settings to collapse or
+expand groups. The original response remains unchanged in Result.
+
 Only an actual reorder writes an analyzer override. The partial configuration
 below omits installation metadata that must be preserved:
 

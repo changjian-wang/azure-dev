@@ -8,11 +8,11 @@ not served to the browser.
 ## Current source
 
 - Repository: cu-viewer.
-- Source commit: `15b8fa5a223d1f695f2d6011a9fb4b4d45dc9271` (clean producer worktree).
+- Source commit: `2d764a52146c0bcf9e6caeac2ea2da8dbe282394` (clean producer worktree).
 - Frontend package version: `0.0.0` (local preview source, not a published npm dependency).
 - Build command: `npm run build:viewer -- --configLoader runner`.
-- Imported on: 2026-11-09.
-- Payload: 225 plain files, including the root licenses.
+- Imported on: 2026-11-10.
+- Payload: 226 plain files, including the root licenses.
 
 This local preview includes the header-free shell, pointer-transparent temporary
 previews, shared typography/colors, independent object expansion and the optional
@@ -23,6 +23,11 @@ weight, Legend switches use compact visuals with unchanged hit areas, and
 Fields Settings has a Confidence switch plus full-width highlighted actions
 including Reset Field Order. This is a local development build, not an official
 extension release.
+
+Paragraphs now provides collapsible page groups, search, cyclic navigation and
+page expansion settings. Info replaces Metadata with a read-only hierarchy of
+returned metadata, usage, infos and warnings, including group expansion settings
+and compact token-count summaries.
 
 The complete page and assets were imported together. Third-party notice and
 license text retains the source revision's canonical LF content; codec and
