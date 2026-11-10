@@ -1,12 +1,20 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-// cspell:ignore featureflags
+// cspell:ignore featureflags BYOAKS
 
 package featureflags
 
-// Every agents preview feature is declared here and listed by All.
+import "azure.ai.projects/synthesis"
+
+// Every agents and shared Foundry preview is listed by All.
 var (
+	// FoundryACRReuse controls external registries for new projects.
+	FoundryACRReuse = Feature{
+		ID:          synthesis.ACRReuseFeatureID,
+		EnvVar:      synthesis.ACRReuseEnvVar,
+		Description: "External ACR reuse for new Foundry projects, including cleanup",
+	}
 	// ManagedHarness controls prompt agents using a Copilot harness.
 	ManagedHarness = Feature{
 		ID:          "agents.managed_harness",
@@ -37,12 +45,26 @@ var (
 		EnvVar:      "AZD_ALPHA_ENABLE_AGENTS_MEMORY_SNAPSHOT",
 		Description: "Hosted agent memory snapshots",
 	}
+	// BYOAKS controls existing-AKS initialization and adoption,
+	// provisioning, and provisioning preview.
+	BYOAKS = Feature{
+		ID:             synthesis.BYOAKSFeatureID,
+		EnvVar:         synthesis.BYOAKSEnvVar,
+		Description:    "Existing AKS project initialization, adoption, provisioning, and provisioning preview",
+		DefaultEnabled: false,
+	}
+	// RBACWarnings controls retained warnings via beta events.
+	RBACWarnings = Feature{
+		ID:          "agents.rbac_warnings",
+		EnvVar:      "AZD_ALPHA_ENABLE_AGENTS_RBAC_WARNINGS",
+		Description: "Retained developer RBAC deployment warnings",
+	}
 )
 
 // All returns every declared feature in a stable order.
 // The slice is a fresh copy, so callers may change it.
 func All() []Feature {
-	return []Feature{ManagedHarness, Voice, LongRunning, A2A, MemorySnapshot}
+	return []Feature{ManagedHarness, Voice, LongRunning, A2A, MemorySnapshot, BYOAKS, FoundryACRReuse, RBACWarnings}
 }
 
 // Lookup returns the declared feature with the given ID.

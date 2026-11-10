@@ -1,12 +1,15 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+// cspell:ignore BYOAKS
+
 package cmd
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -190,6 +193,10 @@ func flagNeedsFeature(flag *pflag.Flag) bool {
 
 type serviceGateKey struct{}
 
+type serviceGateContext struct {
+	noticeWriter io.Writer
+}
+
 var previewValidators sync.Map
 
 // validateBeforePreview registers a pure local check to run only when the gate would reject.
@@ -201,7 +208,9 @@ func validateBeforePreview(cmd *cobra.Command, fn func(*cobra.Command, []string)
 // disabled preview inputs. Local errors take precedence on rejection.
 func enforcePreviewFeatures(cmd *cobra.Command, args []string) error {
 	if cmd.Annotations[serviceGateAnnotation] != "" {
-		cmd.SetContext(context.WithValue(cmd.Context(), serviceGateKey{}, true))
+		cmd.SetContext(context.WithValue(cmd.Context(), serviceGateKey{}, serviceGateContext{
+			noticeWriter: previewNoticeWriter(cmd),
+		}))
 	}
 
 	features := requiredPreviewFeatures(cmd)
@@ -217,11 +226,19 @@ func enforcePreviewFeatures(cmd *cobra.Command, args []string) error {
 		return gateErr
 	}
 	for _, feature := range features {
-		if err := featureflags.Require(feature); err != nil {
+		if err := featureflags.RequireWithWriter(feature, previewNoticeWriter(cmd)); err != nil {
 			return reject(err)
 		}
 	}
 	return nil
+}
+
+func previewNoticeWriter(cmd *cobra.Command) io.Writer {
+	if flag := cmd.Flag("output"); flag != nil &&
+		(flag.Value.String() == "json" || flag.Value.String() == "raw") {
+		return cmd.ErrOrStderr()
+	}
+	return cmd.OutOrStdout()
 }
 
 // requireSelectedServiceFeatures classifies a selected agent service when the
@@ -229,10 +246,11 @@ func enforcePreviewFeatures(cmd *cobra.Command, args []string) error {
 func requireSelectedServiceFeatures(
 	ctx context.Context, service *azdext.ServiceConfig, projectRoot string,
 ) error {
-	if gated, _ := ctx.Value(serviceGateKey{}).(bool); !gated {
+	gate, gated := ctx.Value(serviceGateKey{}).(serviceGateContext)
+	if !gated {
 		return nil
 	}
-	if err := project.RequireAgentFeatures(service, projectRoot); err != nil {
+	if err := project.RequireAgentFeatures(service, projectRoot, gate.noticeWriter); err != nil {
 		return &serviceGateError{err: err}
 	}
 	return nil
@@ -324,9 +342,31 @@ func removeHelpBlocks(text, joined string) string {
 	return text
 }
 
-func requireProjectPreviewFeatures(config *azdext.ProjectConfig) error {
+func requireBYOAKSProjectFeature(config *azdext.ProjectConfig, writer io.Writer) error {
 	for _, service := range config.GetServices() {
-		if err := project.RequireAgentFeatures(service, config.GetPath()); err != nil {
+		if service.GetHost() != AiProjectHost {
+			continue
+		}
+		props := project.ServiceConfigProps(service)
+		if props.GetFields()["agentHosting"] == nil && props.GetFields()["$ref"] == nil {
+			continue
+		}
+		props, err := project.ResolveServiceConfigProps(service, config.GetPath())
+		if err != nil {
+			return err
+		}
+		if hosting := props.GetFields()["agentHosting"]; hosting != nil && hosting.AsInterface() != nil {
+			if err := featureflags.RequireWithWriter(featureflags.BYOAKS, writer); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func requireProjectPreviewFeatures(config *azdext.ProjectConfig, writer io.Writer) error {
+	for _, service := range config.GetServices() {
+		if err := project.RequireAgentFeatures(service, config.GetPath(), writer); err != nil {
 			return err
 		}
 	}
@@ -334,7 +374,7 @@ func requireProjectPreviewFeatures(config *azdext.ProjectConfig) error {
 }
 
 func requireManifestPreviewFeatures(
-	content []byte, projectRoot string,
+	content []byte, projectRoot string, writer io.Writer,
 ) error {
 	var document struct {
 		Services map[string]*agentServiceAddRawService `yaml:"services"`
@@ -346,15 +386,19 @@ func requireManifestPreviewFeatures(
 	if err != nil {
 		return err
 	}
-	return requireProjectPreviewFeatures(&azdext.ProjectConfig{Services: services, Path: projectRoot})
+	config := &azdext.ProjectConfig{Services: services, Path: projectRoot}
+	if err := requireBYOAKSProjectFeature(config, writer); err != nil {
+		return err
+	}
+	return requireProjectPreviewFeatures(config, writer)
 }
 
-func requireStagedPreviewFeatures(root string) error {
+func requireStagedPreviewFeatures(root string, writer io.Writer) error {
 	content, err := os.ReadFile(filepath.Join(root, "azure.yaml"))
 	if err != nil {
 		return err
 	}
-	return requireManifestPreviewFeatures(content, root)
+	return requireManifestPreviewFeatures(content, root, writer)
 }
 
 // selectLocalService selects a service for local preview checks.
