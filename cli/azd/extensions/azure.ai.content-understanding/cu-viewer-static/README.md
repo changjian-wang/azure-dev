@@ -8,10 +8,11 @@ not served to the browser.
 ## Current source
 
 - Repository: cu-viewer.
-- Source commit: `2d764a52146c0bcf9e6caeac2ea2da8dbe282394` (clean producer worktree).
+- Source base commit: `2d764a52146c0bcf9e6caeac2ea2da8dbe282394` on `feature/cu-analyze-view`,
+  including the producer worktree's uncommitted phase-one local Label changes.
 - Frontend package version: `0.0.0` (local preview source, not a published npm dependency).
 - Build command: `npm run build:viewer -- --configLoader runner`.
-- Imported on: 2026-11-10.
+- Imported on: 2026-11-11.
 - Payload: 226 plain files, including the root licenses.
 
 This local preview includes the header-free shell, pointer-transparent temporary
@@ -28,6 +29,17 @@ Paragraphs now provides collapsible page groups, search, cyclic navigation and
 page expansion settings. Info replaces Metadata with a read-only hierarchy of
 returned metadata, usage, infos and warnings, including group expansion settings
 and compact token-count summaries.
+
+Local Label sessions now accept `labels` without an Analyze `result`. The Label
+tab reads typed `fieldLabels`, uses the PDF's page dimensions, and provides
+scalar/object/array source highlighting and bidirectional hover/selection.
+Reference colors remain green and blue regardless of confidence; no comparison
+or label editing is included. Analyzer preference RPCs are not used in labels-only
+sessions. The Go host and these complete assets must be updated together.
+
+Label source frames additionally merge adjacent word/punctuation fragments and
+use a thin, outward-offset decoration at small zoom. This does not change raw
+source polygons, hit targets, PDF text or existing Fields frame styling.
 
 The complete page and assets were imported together. Third-party notice and
 license text retains the source revision's canonical LF content; codec and

@@ -63,6 +63,12 @@ func Prepare(ctx context.Context, input analysis.Input, output io.Writer) (*Sess
 
 func prepare(
 	ctx context.Context, input analysis.Input, output io.Writer, assets fs.FS,
+) (*Session, error) {
+	return prepareSource(ctx, input, output, assets, false)
+}
+
+func prepareSource(
+	ctx context.Context, input analysis.Input, output io.Writer, assets fs.FS, pdfOnly bool,
 ) (_ *Session, resultErr error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -88,9 +94,13 @@ func prepare(
 		}
 		return nil, &azdext.LocalError{
 			Code: exterrors.CodeViewerSourceInvalid, Category: azdext.LocalErrorCategoryValidation,
-			Message:    "--view requires a local PDF, PNG, JPEG, BMP, HEIF, or HEIC file.",
-			Suggestion: "Use a supported source, or omit --view. AVIF and HEIF image sequences are not supported.",
+			Message:    "CU Viewer requires a local PDF, PNG, JPEG, BMP, HEIF, or HEIC file.",
+			Suggestion: "Use a supported source. AVIF and HEIF image sequences are not supported.",
 		}
+	}
+	if pdfOnly && contentType != "application/pdf" {
+		return nil, localError(exterrors.CodeViewerSourceInvalid,
+			"Label view currently requires a local PDF.", "Use `azd ai cu label view <PDF>`.")
 	}
 	if err := validateAssets(assets); err != nil {
 		return nil, err
@@ -122,25 +132,37 @@ func prepare(
 
 // Show publishes the complete response, opens the browser, and waits for cancellation.
 func (s *Session) Show(ctx context.Context, response json.RawMessage, fieldOrders FieldOrderStore) (resultErr error) {
+	return s.show(ctx, response, nil, fieldOrders)
+}
+
+func (s *Session) show(
+	ctx context.Context, response, labels json.RawMessage, fieldOrders FieldOrderStore,
+) (resultErr error) {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if !json.Valid(response) || len(bytes.TrimSpace(response)) == 0 || bytes.TrimSpace(response)[0] != '{' {
+	if labels == nil && (!json.Valid(response) || len(bytes.TrimSpace(response)) == 0 ||
+		bytes.TrimSpace(response)[0] != '{') {
 		return localError(exterrors.CodeViewerResultInvalid,
 			"The CU Viewer did not receive a complete analysis response.", "Retry the analysis.")
 	}
+	retry := "Retry the analysis with --view."
+	if labels != nil {
+		retry = "Retry `azd ai cu label view <PDF>`."
+	}
 	if !s.sourceUnchanged() {
 		return localError(exterrors.CodeViewerSourceInvalid,
-			"The source changed during analysis.", "Keep the source unchanged and retry the analysis.")
+			"The source changed before the viewer started.", "Keep the source unchanged and retry the command.")
 	}
 	data := struct {
 		Source        string          `json:"source"`
 		Name          string          `json:"name"`
-		Result        json.RawMessage `json:"result"`
+		Result        json.RawMessage `json:"result,omitempty"`
+		Labels        json.RawMessage `json:"labels,omitempty"`
 		FieldOrderURL string          `json:"fieldOrderUrl,omitempty"`
 	}{
 		Source: "./source/" + url.PathEscape(s.sourceInfo.Name()),
-		Name:   s.sourceInfo.Name(), Result: response,
+		Name:   s.sourceInfo.Name(), Result: response, Labels: labels,
 	}
 	s.fieldOrders = fieldOrders
 	if fieldOrders != nil {
@@ -150,7 +172,7 @@ func (s *Session) Show(ctx context.Context, response json.RawMessage, fieldOrder
 	s.sessionJSON, err = json.Marshal(data)
 	if err != nil {
 		return localError(exterrors.CodeViewerResultInvalid,
-			"The CU Viewer session could not be encoded.", "Retry the analysis.")
+			"The CU Viewer session could not be encoded.", retry)
 	}
 	done := make(chan struct{})
 	var serveErr error
@@ -163,7 +185,7 @@ func (s *Session) Show(ctx context.Context, response json.RawMessage, fieldOrder
 		<-done
 		if serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) && !errors.Is(serveErr, net.ErrClosed) {
 			resultErr = errors.Join(resultErr, localError(exterrors.CodeViewerServeFailed,
-				"The CU Viewer local service stopped unexpectedly.", "Retry the analysis with --view."))
+				"The CU Viewer local service stopped unexpectedly.", retry))
 		}
 	}()
 	if err := s.checkReady(ctx); err != nil {
@@ -178,8 +200,8 @@ func (s *Session) Show(ctx context.Context, response json.RawMessage, fieldOrder
 			return ctx.Err()
 		}
 		return localError(exterrors.CodeViewerBrowserFailed,
-			"The default browser could not be opened. Completed analysis results were retained.",
-			"Configure a default browser and retry with --view.")
+			"The default browser could not be opened. Local source and saved data were retained.",
+			"Configure a default browser and retry the command.")
 	}
 	if _, err := fmt.Fprintf(s.output, "CU Viewer: %s\nPress Ctrl+C to stop the local viewer.\n", s.address); err != nil {
 		return localError(exterrors.CodeViewerOutputFailed,
@@ -190,7 +212,7 @@ func (s *Session) Show(ctx context.Context, response json.RawMessage, fieldOrder
 		return ctx.Err()
 	case <-done:
 		return localError(exterrors.CodeViewerServeFailed,
-			"The CU Viewer local service stopped unexpectedly.", "Retry the analysis with --view.")
+			"The CU Viewer local service stopped unexpectedly.", retry)
 	}
 }
 

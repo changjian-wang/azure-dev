@@ -81,6 +81,7 @@ Current maturity status of Azure Developer CLI features. See [Feature Stages](..
 | Deployment Stacks | Alpha |
 | Extensions | Stable |
 | [Content Understanding browser Viewer](../../cli/azd/extensions/azure.ai.content-understanding/docs/usage.md#view-a-local-analysis-in-the-browser) (`analyze --view`) | Preview (unreleased extension) |
+| [Content Understanding local label Viewer](../../cli/azd/extensions/azure.ai.content-understanding/docs/usage.md#view-local-labels) (`label view`) | Preview (unreleased extension) |
 
 ## Extension gRPC Contracts
 

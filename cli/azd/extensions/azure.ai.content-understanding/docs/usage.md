@@ -220,6 +220,42 @@ Service response bodies and authored content remain hidden.
   failures or cancellation return nonzero while retaining completed result
   files and the requested report. Reports never overwrite existing files.
 
+### View local labels
+
+```powershell name="Open a local PDF with reference labels"
+azd ai cu label view invoice.pdf
+```
+
+This local-only command appends `.labels.json` to the input path and reads
+`invoice.pdf.labels.json`. It does not read or require `invoice.pdf.result.json`,
+authenticate, resolve an analyzer, upload, or call Azure.
+
+- Provide exactly one local PDF. URLs, directories and unsupported source types
+  are rejected. The paired label file must be regular UTF-8 JSON, contain a
+  `fieldLabels` object, and fit within 500,000 bytes.
+- The Label tab reads each field's typed `value*`, including dates and numbers,
+  and preserves nested objects and array rows. PDF dimensions come from the PDF,
+  not from an analysis result. Invalid or unavailable regions are reported rather
+  than guessed.
+- Scalar and object labels use light green; arrays and their descendant labels
+  use light blue. Confidence does not recolor reference labels. Group hover
+  previews show descendant names and values; the PDF and label table support
+  hover, selection and navigation in both directions.
+- Label hover/selection frames use a one-CSS-pixel stroke with approximately
+  one pixel of outside clearance. Adjacent words and narrow punctuation on the
+  same line share a display frame; aligned wrapped lines may also share one.
+  Separate columns, distant sources and intervening fields prevent merging.
+  Raw source polygons, hit targets, PDF text and existing Fields styling stay unchanged.
+- This phase is read-only and does not compare extracted values, classify
+  mismatches or false positives/negatives, or edit labels. PDF and JSON files
+  remain unchanged, and analyzer preference RPCs are not used.
+- The bundled viewer runs on loopback until `Ctrl+C`. `--no-prompt` still opens
+  the explicitly requested viewer. Use `--output default` or `--output none`;
+  diagnostics are written to stderr without a JSON result on stdout.
+
+The command is available in the paired development extension and Viewer build;
+it does not update an existing installed extension or older Viewer resources.
+
 ### View a local analysis in the browser
 
 Use `--view` to display one local source and the complete response from the same
@@ -586,6 +622,7 @@ for endpoint-only operation.
 | Endpoint without an environment selection, no configured tenant | Looks up the resolved subscription if present; otherwise delegates tenant selection to azd authentication. |
 | No valid azd authentication, even with endpoint and tenant | Authentication is still required; sign in through azd. |
 | Help or version | No authentication or tenant configuration is required. |
+| `label view` | Local PDF and label input only; no authentication, tenant, endpoint or project is required. |
 
 For guest or cross-tenant access, the signed-in identity must have access through
 the appropriate tenant. A tenant ID does not grant resource permissions, and the

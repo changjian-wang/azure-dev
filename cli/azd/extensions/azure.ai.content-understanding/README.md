@@ -306,11 +306,42 @@ Validation errors identify source line/column locations. Authoring checks locate
 the alias they actually use (for example, `field_schema` when `fieldSchema` is
 empty); `--spec` findings retain locations in the original service-contract body.
 
+## View local labels (offline)
+
+```powershell name="View saved labels without analysis"
+azd ai cu label view invoice.pdf
+```
+
+This opens the local PDF with the adjacent `invoice.pdf.labels.json`. The `.pdf`
+suffix is retained. No `.result.json`, project, endpoint, tenant, authentication,
+upload, or Analyze call is required. The label file must be a regular UTF-8 JSON
+file of at most 500,000 bytes with a root `fieldLabels` object.
+
+The **Label** tab retains typed values, nested objects and array rows. Every
+valid source region is mapped against the PDF's own page dimensions. Scalar and
+object labels are light green; labels inside arrays are light blue, independently
+of confidence. Hovering and selection link the PDF and labels in both directions;
+group previews summarize descendant values. Missing values or sources are not
+invented. The colors identify reference labels, not comparison results.
+
+The PDF and label JSON stay unchanged. Status goes to stderr, `Ctrl+C` stops the
+loopback service, and `--no-prompt` does not suppress this explicit viewer.
+`--output default` and `--output none` are supported; JSON console output is not.
+Comparison, false-positive/false-negative classification and editing are not
+part of this first phase. See [local label viewing](docs/usage.md#view-local-labels).
+
+This command requires the paired development extension and bundled Viewer;
+existing installed binaries are not automatically replaced. The requested
+`label view` grouping follows this extension's entity-group command pattern;
+see the general [extension guidelines](../../docs/extensions/extensions-style-guide.md)
+for the broader verb-first recommendation.
+
 ## Command overview
 
 | Command | Purpose |
 | --- | --- |
 | `azd ai cu analyze` | Analyze local files, directories, or HTTPS URLs. |
+| `azd ai cu label view` | Open a local PDF and its `.labels.json` without analysis or authentication. |
 | `azd ai cu analyzer` | List, show, create, copy, delete, validate, and test analyzers. |
 | `azd ai cu analyzer schema create` | Generate an offline starter or suggest fields from a sample. |
 | `azd ai cu defaults` | Read or configure resource-level model-to-deployment defaults. |

@@ -16,6 +16,7 @@ const (
 	CodeViewerAssetsInvalid    = "viewer_assets_invalid"
 	CodeViewerListenFailed     = "viewer_listen_failed"
 	CodeViewerResultInvalid    = "viewer_result_invalid"
+	CodeViewerLabelsInvalid    = "viewer_labels_invalid"
 	CodeViewerBrowserFailed    = "viewer_browser_failed"
 	CodeViewerServeFailed      = "viewer_serve_failed"
 	CodeViewerOutputFailed     = "viewer_output_failed"

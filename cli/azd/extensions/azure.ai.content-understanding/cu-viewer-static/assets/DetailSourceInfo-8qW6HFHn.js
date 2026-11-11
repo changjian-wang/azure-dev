@@ -1,0 +1,1 @@
+import{c as e}from"./index-ClmECeA2.js";var t=e();function n(e){return[...new Set(e.regions.map(e=>e.pageNumber))]}function r({field:e,id:r}){let i=n(e);return(0,t.jsx)(`span`,{id:r,className:`cu-detail-source`,children:i.length?`Page ${i.join(`, `)}${e.regions.length>1?` · ${e.regions.length} regions`:``}`:`No source region`})}export{n,r as t};

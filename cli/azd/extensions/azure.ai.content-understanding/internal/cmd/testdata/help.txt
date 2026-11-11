@@ -13,6 +13,7 @@ Available Commands
   doctor   : Check CU configuration, authentication, access, and generative readiness
   env-var  : Discover supported environment variables and inspect set values
   infra    : Generate infrastructure and complete azd-managed provisioning
+  label    : Inspect local Content Understanding labels
   version  : Display the extension version
 
 Flags
@@ -32,6 +33,9 @@ Examples
 
   azd ai cu analyzer list
     List the analyzers available in the connected resource.
+
+  azd ai cu label view invoice.pdf
+    View invoice.pdf.labels.json locally without analysis or authentication.
 
   azd ai cu doctor
     Check authentication, resource access, and model configuration.

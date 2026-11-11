@@ -44,6 +44,7 @@ func newRootCommandWithViewer(
 	rootCmd.AddCommand(newMetadataCommand(rootCmd))
 	rootCmd.AddCommand(newAnalyzerCommand(extCtx, open))
 	rootCmd.AddCommand(newAnalyzeCommand(extCtx, open, openViewer))
+	rootCmd.AddCommand(newLabelCommand(extCtx, prepareLabelViewer))
 	rootCmd.AddCommand(newDefaultsCommand(extCtx, open))
 	rootCmd.AddCommand(newDoctorCommand(extCtx, open))
 	rootCmd.AddCommand(newConfigCommand(extCtx))
@@ -54,6 +55,9 @@ func newRootCommandWithViewer(
 
   azd ai cu analyzer list
     List the analyzers available in the connected resource.
+
+  azd ai cu label view invoice.pdf
+    View invoice.pdf.labels.json locally without analysis or authentication.
 
   azd ai cu doctor
     Check authentication, resource access, and model configuration.`
