@@ -56,7 +56,7 @@ func newRootCommandWithViewer(
   azd ai cu analyzer list
     List the analyzers available in the connected resource.
 
-  azd ai cu label view invoice.pdf
+  azd ai cu label show invoice.pdf
     View invoice.pdf.labels.json locally without analysis or authentication.
 
   azd ai cu doctor

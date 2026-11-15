@@ -100,7 +100,7 @@ func prepareSource(
 	}
 	if pdfOnly && contentType != "application/pdf" {
 		return nil, localError(exterrors.CodeViewerSourceInvalid,
-			"Label view currently requires a local PDF.", "Use `azd ai cu label view <PDF>`.")
+			"Label viewing currently requires a local PDF.", "Use `azd ai cu label show <PDF>`.")
 	}
 	if err := validateAssets(assets); err != nil {
 		return nil, err
@@ -132,11 +132,11 @@ func prepareSource(
 
 // Show publishes the complete response, opens the browser, and waits for cancellation.
 func (s *Session) Show(ctx context.Context, response json.RawMessage, fieldOrders FieldOrderStore) (resultErr error) {
-	return s.show(ctx, response, nil, fieldOrders)
+	return s.show(ctx, response, nil, fieldOrders, nil)
 }
 
 func (s *Session) show(
-	ctx context.Context, response, labels json.RawMessage, fieldOrders FieldOrderStore,
+	ctx context.Context, response, labels json.RawMessage, fieldOrders FieldOrderStore, warnings []string,
 ) (resultErr error) {
 	if err := ctx.Err(); err != nil {
 		return err
@@ -148,7 +148,7 @@ func (s *Session) show(
 	}
 	retry := "Retry the analysis with --view."
 	if labels != nil {
-		retry = "Retry `azd ai cu label view <PDF>`."
+		retry = "Retry `azd ai cu label show <PDF>`."
 	}
 	if !s.sourceUnchanged() {
 		return localError(exterrors.CodeViewerSourceInvalid,
@@ -160,9 +160,10 @@ func (s *Session) show(
 		Result        json.RawMessage `json:"result,omitempty"`
 		Labels        json.RawMessage `json:"labels,omitempty"`
 		FieldOrderURL string          `json:"fieldOrderUrl,omitempty"`
+		Warnings      []string        `json:"warnings,omitempty"`
 	}{
 		Source: "./source/" + url.PathEscape(s.sourceInfo.Name()),
-		Name:   s.sourceInfo.Name(), Result: response, Labels: labels,
+		Name:   s.sourceInfo.Name(), Result: response, Labels: labels, Warnings: warnings,
 	}
 	s.fieldOrders = fieldOrders
 	if fieldOrders != nil {

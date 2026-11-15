@@ -223,32 +223,48 @@ Service response bodies and authored content remain hidden.
 ### View local labels
 
 ```powershell name="Open a local PDF with reference labels"
-azd ai cu label view invoice.pdf
+azd ai cu label show invoice.pdf
 ```
 
-This local-only command appends `.labels.json` to the input path and reads
-`invoice.pdf.labels.json`. It does not read or require `invoice.pdf.result.json`,
-authenticate, resolve an analyzer, upload, or call Azure.
+This local-only command reads `invoice.pdf.labels.json` and automatically loads
+an adjacent `invoice.pdf.result.json` if present. Both names retain `.pdf`.
+No extra result option is needed; `label view` remains a compatibility alias.
+It does not authenticate, resolve an analyzer, upload, or call Azure.
 
 - Provide exactly one local PDF. URLs, directories and unsupported source types
   are rejected. The paired label file must be regular UTF-8 JSON, contain a
   `fieldLabels` object, and fit within 500,000 bytes.
-- The Label tab reads each field's typed `value*`, including dates and numbers,
-  and preserves nested objects and array rows. PDF dimensions come from the PDF,
-  not from an analysis result. Invalid or unavailable regions are reported rather
-  than guessed.
-- Scalar and object labels use light green; arrays and their descendant labels
-  use light blue. Confidence does not recolor reference labels. Group hover
-  previews show descendant names and values; the PDF and label table support
-  hover, selection and navigation in both directions.
+- Fields reads typed `value*`, preserving dates, numbers, objects and array rows.
+  When the first content declares fields, it shows Field Name, Label Value and
+  Extracted Value. Missing result or fields keeps two reference columns;
+  `fields: {}` still enables comparison. Full successful envelopes use
+  `result.contents[0].fields`; supported inner results use `contents[0].fields`.
+- Optional results must be regular UTF-8 JSON, at most 64 MiB, with a supported
+  Viewer API version (`2025-11-01` or `2026-06-01-preview`). Unreadable, malformed
+  or unsupported results produce a warning on stderr and in the page, then
+  continue with labels. No replacement result is created.
+- Exact typed paths and array indexes determine matching. Scalar/object defaults
+  are light blue, array defaults slightly darker blue, matching values green,
+  different or extra extractions light red, and missing extractions darker red.
+  Low extracted confidence adds a translucent red outline without replacing the
+  matching background or inheriting label confidence. Legend explains all five.
+- Arrays show labels above extracted values with shared columns and bidirectional
+  horizontal scrolling within each pair. Tab switches and collapse restore one
+  column position; manual vertical scrolling and other arrays stay independent. Search covers
+  names and both values. Correct/incorrect count buttons use leaf-value counts;
+  error filtering retains complete arrays with at least one incorrect cell.
+- Hovering and selection work in both directions. Flyout banners use the status
+  color and show label above extraction, with extracted confidence when present.
+  Label geometry comes from the actual PDF; extraction geometry comes from its
+  own result page metadata. Missing-extraction highlights use the true label
+  region and never invent an extraction.
 - Label hover/selection frames use a one-CSS-pixel stroke with approximately
   one pixel of outside clearance. Adjacent words and narrow punctuation on the
   same line share a display frame; aligned wrapped lines may also share one.
   Separate columns, distant sources and intervening fields prevent merging.
   Raw source polygons, hit targets, PDF text and existing Fields styling stay unchanged.
-- This phase is read-only and does not compare extracted values, classify
-  mismatches or false positives/negatives, or edit labels. PDF and JSON files
-  remain unchanged, and analyzer preference RPCs are not used.
+- Comparison is read-only. PDF and JSON files remain unchanged, and analyzer
+  preference RPCs are not used.
 - The bundled viewer runs on loopback until `Ctrl+C`. `--no-prompt` still opens
   the explicitly requested viewer. Use `--output default` or `--output none`;
   diagnostics are written to stderr without a JSON result on stdout.
@@ -622,7 +638,7 @@ for endpoint-only operation.
 | Endpoint without an environment selection, no configured tenant | Looks up the resolved subscription if present; otherwise delegates tenant selection to azd authentication. |
 | No valid azd authentication, even with endpoint and tenant | Authentication is still required; sign in through azd. |
 | Help or version | No authentication or tenant configuration is required. |
-| `label view` | Local PDF and label input only; no authentication, tenant, endpoint or project is required. |
+| `label show` (`view` alias) | Local PDF, labels and optional saved result only; no authentication, tenant, endpoint or project is required. |
 
 For guest or cross-tenant access, the signed-in identity must have access through
 the appropriate tenant. A tenant ID does not grant resource permissions, and the

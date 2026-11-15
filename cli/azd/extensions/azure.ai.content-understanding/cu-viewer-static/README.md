@@ -8,12 +8,12 @@ not served to the browser.
 ## Current source
 
 - Repository: cu-viewer.
-- Source base commit: `2d764a52146c0bcf9e6caeac2ea2da8dbe282394` on `feature/cu-analyze-view`,
-  including the producer worktree's uncommitted phase-one local Label changes.
+- Source commit: `87a7c6b00b66876a2563da570d8427b136cd2f63` on `feature/cu-analyze-view`.
 - Frontend package version: `0.0.0` (local preview source, not a published npm dependency).
-- Build command: `npm run build:viewer -- --configLoader runner`.
-- Imported on: 2026-11-11.
-- Payload: 226 plain files, including the root licenses.
+- Build command: `npm run build:viewer`, using Node.js 24.22.2 after frozen `npm ci --ignore-scripts --engine-strict`.
+- Imported on: 2026-11-15.
+- Payload: 229 plain files, including the root licenses.
+- Payload tree SHA-256: `09ff83da50dd2fb106ba838710753909e44dbd42d1da51b698c47321649fb144`.
 
 This local preview includes the header-free shell, pointer-transparent temporary
 previews, shared typography/colors, independent object expansion and the optional
@@ -30,12 +30,28 @@ page expansion settings. Info replaces Metadata with a read-only hierarchy of
 returned metadata, usage, infos and warnings, including group expansion settings
 and compact token-count summaries.
 
-Local Label sessions now accept `labels` without an Analyze `result`. The Label
-tab reads typed `fieldLabels`, uses the PDF's page dimensions, and provides
-scalar/object/array source highlighting and bidirectional hover/selection.
-Reference colors remain green and blue regardless of confidence; no comparison
-or label editing is included. Analyzer preference RPCs are not used in labels-only
-sessions. The Go host and these complete assets must be updated together.
+Label sessions use the existing Fields tab, not a separate Label tab. The
+`label show` host discovers the adjacent saved result automatically, with `view`
+retained as an alias. Comparable inputs show Field Name, Label Value and Extracted
+Value, including stacked array tables and whole-array status filtering. Labels
+without comparable results remain a two-column reference view.
+
+Paired array tables share bidirectional horizontal scrolling and restore one
+column position after tab switches or collapse. Manual vertical scrolling and
+other array groups remain independent. The fixed `#` corner stays visible above
+scrolling column headers and row numbers.
+
+The shared palette distinguishes default scalar/object blue, darker array blue,
+green matches, light-red differences or extractions without labels, and darker-red
+labels without extractions. Low extracted confidence adds an independent
+translucent red outline. Flyout banners and arrows use the status color, with
+label above extraction and available extracted confidence.
+
+Label-only missing regions use the label's own PDF dimensions; extraction pixels
+and label inches are not mixed. Optional session warnings explain invalid-result
+fallbacks. Label sessions never use analyzer-preference RPCs. The Go host and
+these complete assets must be updated together; input documents and results are
+not part of this payload.
 
 Label source frames additionally merge adjacent word/punctuation fragments and
 use a thin, outward-offset decoration at small zoom. This does not change raw

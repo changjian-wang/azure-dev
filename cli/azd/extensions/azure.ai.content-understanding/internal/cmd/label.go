@@ -7,7 +7,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 
 	"azure.ai.content-understanding/internal/analysis"
@@ -20,7 +22,7 @@ import (
 )
 
 type labelViewer interface {
-	ShowLabels(context.Context, json.RawMessage) error
+	ShowLabels(context.Context, json.RawMessage, json.RawMessage, []string) error
 	Close() error
 }
 
@@ -35,16 +37,19 @@ func newLabelCommand(extCtx *azdext.ExtensionContext, open labelViewerFactory) *
 		Use: "label", Short: "Inspect local Content Understanding labels",
 	}
 	view := &cobra.Command{
-		Use: "view <PDF>", Short: "View a local PDF and its .labels.json file",
-		Long: "Open a local PDF and the adjacent <PDF>.labels.json in the read-only Label tab.\n\n" +
-			"Labels are read from fieldLabels, including nested objects and arrays.\n" +
-			"No Analyze result, Azure authentication, upload, or service call is required.\n" +
-			"The viewer runs locally until Ctrl+C. Source and label files are never modified.",
-		Example: `  azd ai cu label view invoice.pdf
-    Read invoice.pdf.labels.json and show its labels on invoice.pdf.`,
+		Use: "show <PDF>", Aliases: []string{"view"}, Short: "Show local labels and compare an adjacent saved result",
+		Long: "Open a local PDF and the adjacent <PDF>.labels.json in the read-only Fields tab.\n\n" +
+			"An adjacent <PDF>.result.json is loaded automatically; no additional option is needed.\n" +
+			"When its first content provides fields, compare label and extracted values side by side.\n" +
+			"Without a result or extracted fields, show reference labels in two columns.\n" +
+			"Unreadable, invalid or unsupported results produce a warning and do not prevent label viewing.\n" +
+			"No Azure authentication, upload, or service call is required. The viewer runs until Ctrl+C.\n" +
+			"PDF, labels and result files are never modified. The legacy `label view` alias is retained.",
+		Example: `  azd ai cu label show invoice.pdf
+    Read invoice.pdf.labels.json and automatically compare invoice.pdf.result.json when available.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return exterrors.FromError(runLabelView(cmd, extCtx, open, args[0]))
+			return exterrors.FromError(runLabelShow(cmd, extCtx, open, args[0]))
 		},
 	}
 	group.AddCommand(azdext.RegisterFlagOptions(view, azdext.FlagOptions{
@@ -54,7 +59,7 @@ func newLabelCommand(extCtx *azdext.ExtensionContext, open labelViewerFactory) *
 	return group
 }
 
-func runLabelView(
+func runLabelShow(
 	cmd *cobra.Command, extCtx *azdext.ExtensionContext, open labelViewerFactory, source string,
 ) (resultErr error) {
 	ctx := cmd.Context()
@@ -63,7 +68,7 @@ func runLabelView(
 	}
 	if extCtx.OutputFormat != "" && extCtx.OutputFormat != "default" && extCtx.OutputFormat != "none" {
 		return commandError(exterrors.CodeConflictingArguments,
-			"label view supports only --output default or --output none.",
+			"label show supports only --output default or --output none.",
 			"Use --output default or --output none for the local viewer.")
 	}
 	input, err := analysis.DiscoverFile(ctx, source)
@@ -72,15 +77,15 @@ func runLabelView(
 			return ctx.Err()
 		}
 		return commandError(exterrors.CodeViewerSourceInvalid,
-			"Label view requires a readable regular local PDF file.",
-			"Use `azd ai cu label view <PDF>` with an existing local PDF.")
+			"Label viewing requires a readable regular local PDF file.",
+			"Use `azd ai cu label show <PDF>` with an existing local PDF.")
 	}
-	labelPath, err := filepath.Abs(source + ".labels.json")
+	sourcePath, err := filepath.Abs(source)
 	if err != nil {
 		return commandError(exterrors.CodeViewerLabelsInvalid,
 			"The local label path could not be resolved.", "Keep <PDF>.labels.json next to the PDF.")
 	}
-	labels, err := localio.ReadBytes(labelPath, viewer.MaxLabelJSONBytes)
+	labels, err := localio.ReadBytes(sourcePath+".labels.json", viewer.MaxLabelJSONBytes)
 	if err != nil {
 		return commandError(exterrors.CodeViewerLabelsInvalid,
 			"The adjacent label file could not be read.",
@@ -92,10 +97,33 @@ func runLabelView(
 	if err := viewer.ValidateLabels(labels); err != nil {
 		return err
 	}
+	result, readErr := localio.ReadBytes(sourcePath+".result.json", viewer.MaxLabelResultJSONBytes)
+	var warnings []string
+	if readErr != nil {
+		result = nil
+		if !errors.Is(readErr, os.ErrNotExist) {
+			warnings = append(warnings,
+				"Result comparison unavailable: the adjacent result could not be read. "+
+					"Use a regular UTF-8 <PDF>.result.json of at most 64 MiB in a readable private directory. "+
+					"Showing labels without comparison.")
+		}
+	} else if err := viewer.ValidateLabelResult(result); err != nil {
+		warnings = append(warnings, "Result comparison unavailable: "+err.Error()+" Showing labels without comparison.")
+		result = nil
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	session, err := open(ctx, input, cmd.ErrOrStderr())
 	if err != nil {
 		return err
 	}
 	defer func() { resultErr = errors.Join(resultErr, session.Close()) }()
-	return session.ShowLabels(ctx, labels)
+	for _, warning := range warnings {
+		if _, err := fmt.Fprintln(cmd.ErrOrStderr(), "Warning:", warning); err != nil {
+			return commandError(exterrors.CodeViewerOutputFailed,
+				"The label viewer warning could not be written.", "Check the command's diagnostic output destination.")
+		}
+	}
+	return session.ShowLabels(ctx, labels, result, warnings)
 }

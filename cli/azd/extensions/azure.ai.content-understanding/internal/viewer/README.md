@@ -27,8 +27,17 @@ directory listings, working-directory files, Go source, credentials or profiles
 are exposed. Source byte ranges and HEAD requests remain supported.
 
 The page-relative session JSON contains `source` (a same-session source URL),
-`name` and `result` (the original CU JSON, including unknown fields and exact
-numbers). The browser runs React; the Go process only provides files and data.
+`name` and, for analysis viewing, `result` (the original CU JSON, including unknown
+fields and exact numbers). Label sessions provide `labels` and optionally the
+convention-named saved `result`; `warnings` carries explicit fallback diagnostics.
+There is no analyzer-preference URL in label sessions. The browser runs React;
+the Go process only provides files and data.
+
+`label show` reads `<PDF>.labels.json` and optional `<PDF>.result.json` locally
+without authentication or service calls. Missing results are reference-only;
+unreadable, invalid or unsupported results warn and keep labels viewable. An
+explicitly empty fields object remains comparable. Both source geometries stay
+independent, and all input files remain unchanged.
 
 Host/Origin checks, GET/HEAD-only handling, CSP, correct JS/Worker/WASM MIME,
 `no-store`, `nosniff`, `no-referrer` and same-origin resource policy are retained.
