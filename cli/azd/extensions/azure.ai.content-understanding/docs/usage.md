@@ -247,10 +247,12 @@ It does not authenticate, resolve an analyzer, upload, or call Azure.
   are light blue, array defaults slightly darker blue, matching values green,
   different or extra extractions light red, and missing extractions darker red.
   Low extracted confidence adds a translucent red outline without replacing the
-  matching background or inheriting label confidence. Legend explains all five.
-- Arrays show labels above extracted values with shared columns and bidirectional
-  horizontal scrolling within each pair. Tab switches and collapse restore one
-  column position; manual vertical scrolling and other arrays stay independent. Search covers
+  matching background or inheriting label confidence. The comparison Legend explains all five.
+- Arrays default to labels beside extracted values with shared columns and a
+  temporary Stacked option. Both layouts synchronize horizontal scrolling within
+  each pair. Side-by-side tables also synchronize vertical scrolling; stacked
+  tables retain independent vertical scrolling. Tab switches and collapse restore
+  one column position, and other arrays stay independent. Search covers
   names and both values. Correct/incorrect count buttons use leaf-value counts;
   error filtering retains complete arrays with at least one incorrect cell.
 - Hovering and selection work in both directions. Flyout banners use the status
@@ -262,7 +264,7 @@ It does not authenticate, resolve an analyzer, upload, or call Azure.
   one pixel of outside clearance. Adjacent words and narrow punctuation on the
   same line share a display frame; aligned wrapped lines may also share one.
   Separate columns, distant sources and intervening fields prevent merging.
-  Raw source polygons, hit targets, PDF text and existing Fields styling stay unchanged.
+  Raw source polygons, hit targets and PDF text stay unchanged.
 - Comparison is read-only. PDF and JSON files remain unchanged, and analyzer
   preference RPCs are not used.
 - The bundled viewer runs on loopback until `Ctrl+C`. `--no-prompt` still opens
@@ -317,11 +319,20 @@ analysis without resource preparation or the local service.
 #### Viewer preferences
 
 The app title bar is removed; the document toolbar still includes its filename,
-page navigation and zoom. Preview names and values use 12.5px text, the purple
-name header matches selected rows, and the confidence badge remains 11px.
-Preview names use regular weight while values retain semibold emphasis.
-Low-confidence table values use `#F6C5CC`, while scalar colors and confidence
-classification remain unchanged.
+page navigation and zoom. PDF Fields without labels use the same Material style
+as label viewing: blue 50 for scalar/object values, blue 100 for arrays, compact
+28px rows and 24px value boxes. Low confidence adds an independent translucent
+red outline rather than replacing the fill. Missing confidence is not fabricated.
+
+PDF field-preview titles and arrows use the field/array fill, or the matching
+status fill when labels are compared. Names remain regular-weight and values
+semibold; extracted-value previews and confidence badges use compact 11px text.
+Low-score badges remain visible when outlines are disabled. The unlabeled Legend
+shows the two blue categories and a blue low-confidence example, not red/green
+matching categories. Source settings describe the threshold as an outline.
+The existing optional Confidence column, single array tables and saved
+layout/order remain unchanged; no label columns or matching counters are added.
+Images and non-Fields detail views retain their existing visuals.
 
 Fields is shown only when the current content has structured fields. Without
 fields, including table-only layout results, it is hidden and nonempty Markdown

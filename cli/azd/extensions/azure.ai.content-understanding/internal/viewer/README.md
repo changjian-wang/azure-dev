@@ -39,6 +39,12 @@ unreadable, invalid or unsupported results warn and keep labels viewable. An
 explicitly empty fields object remains comparable. Both source geometries stay
 independent, and all input files remain unchanged.
 
+The bundled renderer also aligns unlabeled PDF Fields with the label palette and
+compact value/preview style, using field/array blues plus independent confidence
+outlines without adding comparison columns or statistics. Image sources and
+non-Fields details retain their existing visuals. This is a frontend-only change;
+the Go session contract and preference behavior are unchanged.
+
 Host/Origin checks, GET/HEAD-only handling, CSP, correct JS/Worker/WASM MIME,
 `no-store`, `nosniff`, `no-referrer` and same-origin resource policy are retained.
 The command remains in the foreground until Ctrl+C; closing a tab is not a

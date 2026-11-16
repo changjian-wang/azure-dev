@@ -240,6 +240,13 @@ all nested objects without changing table state or field order.
 Fields Settings uses a compact **Show Confidence** switch and full-width action
 rows with hover and keyboard-focus feedback, including **Reset Field Order**.
 
+PDF Fields without labels share the label view's Material field/array blues,
+compact value boxes, preview styling and independent low-confidence red outlines.
+The red outline indicates confidence, not a comparison error. The optional
+Confidence column and single array table remain; no Label column, matching colors
+or comparison counters are added. Images and other result views keep their
+existing appearance.
+
 Customized field order is saved in azd user settings under the literal
 `extension.installed["azure.ai.content-understanding"].Viewer.fieldOrderByAnalyzer`
 hierarchy, keyed only by the full analyzer ID, such as `prebuilt-invoice`.
@@ -327,8 +334,11 @@ by typed field path and array index, without changing either input.
 Default scalar/object values are light blue and array values a slightly darker
 blue. Matches are green, different or extra extractions light red, and labels
 without an extraction darker red. Low extracted confidence adds a translucent
-red outline independently of matching. Arrays use label-above-extracted tables;
-the count buttons filter whole correct arrays or arrays with at least one error.
+red outline independently of matching. Arrays default to label-left/extracted-right
+tables with a temporary Stacked option. Both layouts synchronize horizontal
+scrolling; side-by-side also synchronizes vertical scrolling, while stacked tables
+retain independent vertical scrolling. The count buttons filter whole correct
+arrays or arrays with at least one error.
 Flyout banners use the same status colors and show both values and available
 extracted confidence. Each side uses its own source geometry.
 

@@ -8,12 +8,12 @@ not served to the browser.
 ## Current source
 
 - Repository: cu-viewer.
-- Source commit: `f18dd733290c6f255352149f05525339c361703c` on `feature/cu-analyze-view`.
+- Source commit: `ed8007ba4a5a398ec932ab9c2078d53eca3b1bd7` on `feature/cu-analyze-view`.
 - Frontend package version: `0.0.0` (local preview source, not a published npm dependency).
-- Build command: `npm run build:viewer`, using Node.js 22.23.5 and the existing dependencies; manifests and lockfile are unchanged.
+- Build command: `npm run build:viewer`, using Node.js 24.22.2 and the frozen validation dependencies; manifests and lockfile are unchanged.
 - Imported on: 2026-11-16.
 - Payload: 229 plain files, including the root licenses.
-- Payload index SHA-256: `98d03550dd4cf4a47900f113631b8b47325ab2b5f75182a20dfa7aeb2ff11f37`.
+- Payload index SHA-256: `d8912d9e7b7e09e70ac3fe39aa860a98bd3296714f8d4ae11b4ebca55be0f6a6`.
 - Index format: UTF-8 entries sorted by relative POSIX path, each containing the path, NUL, lowercase file SHA-256 and LF. Only served payload files are included, not this README or Go source.
 
 This local preview includes the header-free shell, pointer-transparent temporary
@@ -54,17 +54,23 @@ are transparent, never receive confidence outlines and do not change statistics.
 Zero, false, empty strings and explicit null remain valid values.
 
 The low-confidence Legend example shows a value with its matching fill plus
-the red border, not an empty white state. Label-only interaction strokes use
+the red border, not an empty white state. PDF Fields interaction strokes use
 deep purple 600/800 and leave 3 CSS px around confidence edges, including their
 antialiasing. Raw source geometry and hit targets are unchanged. Flyout banners
 and arrows use the status color, with label above extraction; returned confidence
 metadata stays visible when outlines are disabled. No MUI dependency is added.
 
-Ordinary results without labels retain the pre-comparison confidence fills,
-violet preview headings, four-color Legend, optional Confidence column and
-single array table. Label-only styles do not leak into that mode. Unsaved
-comparison layouts use a 45% Source / 55% results split; stored layouts remain
-authoritative, and ordinary/reference defaults are unchanged.
+Unlabeled PDF Fields now share the Material blue 50/100 value boxes, blue
+preview banners/arrows, independent confidence outlines and deep-purple frames.
+Rows are 28px and value boxes 24px, including object and array summaries. The
+Legend shows only the two blues and a blue value with the red confidence outline;
+it never implies matching or adds comparison statistics. Low-score badges remain
+truthful when outlines are hidden. The optional Confidence column, single array
+table and stored layout/order remain available. Images and non-Fields details
+retain their existing visuals.
+
+Unsaved comparison layouts use a 45% Source / 55% results split; stored layouts
+remain authoritative, and ordinary/reference defaults are unchanged.
 
 Comparison search accepts readable names and parent paths, including literal
 slashes and tildes. Both array summaries preview their own grounded descendants;
@@ -79,7 +85,7 @@ not part of this payload.
 
 Label source frames additionally merge adjacent word/punctuation fragments and
 use a thin, outward-offset decoration at small zoom. This does not change raw
-source polygons, hit targets, PDF text or existing Fields frame styling.
+source polygons, hit targets or PDF text.
 The same comparison field's extracted region does not block the label's own
 fragments from merging. Different fields still block unsafe unions; label frames
 never borrow the extraction's coordinates.
