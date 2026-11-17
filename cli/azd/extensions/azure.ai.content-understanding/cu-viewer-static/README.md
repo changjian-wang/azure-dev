@@ -8,12 +8,12 @@ not served to the browser.
 ## Current source
 
 - Repository: cu-viewer.
-- Source commit: `a6ace11d0ac6df4b0a3272cfe9d5ed54bc5f5974` on `feature/cu-analyze-view`.
+- Source commit: `2b9f9b5843b0201f6e41bb0ba3d3bec3a0b62166` on `feature/cu-analyze-view`.
 - Frontend package version: `0.0.0` (local preview source, not a published npm dependency).
 - Build command: `npm run build:viewer`, using Node.js 24.22.1 and the committed npm lockfile in an isolated build.
 - Imported on: 2026-11-17.
 - Payload: 229 plain files, including the root licenses.
-- Payload index SHA-256: `bdd7b59cfaeae8547cba62043ddab426dcbe43d545c248fc345c5a8870fe4d63`.
+- Payload index SHA-256: `448f72bd52dcbd1e0735e9bb6bf51d6347a1f253f7fa04284557eb844e9ae2fb`.
 - Index format: UTF-8 entries sorted by relative POSIX path, each containing the path, NUL, lowercase file SHA-256 and LF. Only served payload files are included, not this README or Go source.
 
 This local preview includes the header-free shell, pointer-transparent temporary
@@ -38,6 +38,8 @@ previews use Fields-style pointed popups showing only their own content's raw
 Markdown value, without offset, length or encoding labels. They use
 codePoint/utf16/utf8 offsets (codePoint when omitted), retain explicit invalid-range
 and missing-content text, stay inside the viewport, and dismiss on Escape or scroll.
+Adjacent span fragments use one newline without an extra blank line; line breaks
+inside each original fragment remain unchanged.
 The full-string modal searches the complete displayed JSON literal, counts and
 cycles through case-insensitive literal matches, and supports Enter/Shift+Enter
 and local Ctrl/Command+F. Cancellable sparse indexing and visible-only merged
