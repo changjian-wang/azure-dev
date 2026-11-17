@@ -122,6 +122,9 @@ func TestInstalledHostOffline(t *testing.T) {
 	})
 	require.Contains(t, string(run(true, "extension", "list", "--installed", "-o", "json")), extensionID)
 	require.Contains(t, string(run(true, "ai", "cu", "--help")), "analyzer")
+	run(false, "ai", "cu", "label", "show", "--help")
+	run(false, "ai", "cu", "label", "view", "--help")
+	require.Contains(t, string(run(true, "ai", "cu", "analyze", "--help")), "<PDF>.labels.json")
 	require.Contains(t, string(run(true, "ai", "cu", "infra", "generate", "--help")), "human-readable")
 	for _, args := range [][]string{{"ai", "cu", "env-var"}, {"ai", "cu", "env-var", "--help"}} {
 		help := string(run(true, args...))

@@ -87,6 +87,8 @@ func TestUsageErrors(t *testing.T) {
 		{"invalid output", []string{"version", "--output", "table"}},
 		{"version arguments", []string{"version", "extra"}},
 		{"metadata arguments", []string{"metadata", "extra"}},
+		{"removed label command", []string{"label", "show", "invoice.pdf"}},
+		{"removed label alias", []string{"label", "view", "invoice.pdf"}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			stdout, stderr, err := executeRoot(t, tt.args...)

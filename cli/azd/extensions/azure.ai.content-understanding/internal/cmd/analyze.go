@@ -42,7 +42,8 @@ func newAnalyzeCommand(
 			"Results use YAML front matter and Markdown by default. Batches save source-relative result files.\n" +
 			"Use --output json for complete JSON, or --dry-run to inspect the plan without service calls.\n" +
 			"Use --view for one local PDF or supported image. The browser uses the complete response, " +
-			"independently of output format; the local viewer runs until Ctrl+C.\n" +
+			"independently of output format. For PDFs, an adjacent <PDF>.labels.json is loaded automatically. " +
+			"The local viewer runs until Ctrl+C.\n" +
 			"The Viewer page is bundled with this extension; no resource download or update check is needed.",
 		Example: `  azd ai cu analyze invoice.pdf
     Analyze one file using the configured analyzer, or prebuilt-layout if unset.
@@ -63,7 +64,7 @@ func newAnalyzeCommand(
     Save YAML front matter and Markdown for generative AI model input.
 
   azd ai cu analyze invoice.pdf --analyzer prebuilt-invoice --view
-    Analyze one local file and keep its browser viewer running until Ctrl+C.`,
+    Analyze and view a local file; compare an adjacent invoice.pdf.labels.json when present.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return exterrors.FromError(runAnalyzeCommand(cmd, extCtx, open, openViewer, options, args))
 		},

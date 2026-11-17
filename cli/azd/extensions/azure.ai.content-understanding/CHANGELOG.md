@@ -4,6 +4,9 @@
 
 ### Features Added
 
+- Automatically load an adjacent `<PDF>.labels.json` during `analyze --view`
+  and compare it with the current analysis. Remove the separate `label show`
+  command.
 - Add an interactive infrastructure generation wizard covering subscription,
   environment, region, resource naming, and access permissions. Explain the
   workflow before subscription selection, then summarize generated files and
@@ -23,6 +26,9 @@
 
 ### Breaking Changes
 
+- Remove `azd ai cu label show` and its `label view` alias. Use
+  `azd ai cu analyze <PDF> --view`; a same-directory `<PDF>.labels.json` is
+  detected and compared automatically.
 - Remove `CU_AUTH_MODE`; existing process or saved-environment values are ignored.
   Use process `CU_API_KEY` to opt into key authentication, or unset it to use
   Entra ID.

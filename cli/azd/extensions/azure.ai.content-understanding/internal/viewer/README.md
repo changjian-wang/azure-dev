@@ -28,16 +28,11 @@ are exposed. Source byte ranges and HEAD requests remain supported.
 
 The page-relative session JSON contains `source` (a same-session source URL),
 `name` and, for analysis viewing, `result` (the original CU JSON, including unknown
-fields and exact numbers). Label sessions provide `labels` and optionally the
-convention-named saved `result`; `warnings` carries explicit fallback diagnostics.
-There is no analyzer-preference URL in label sessions. The browser runs React;
-the Go process only provides files and data.
-
-`label show` reads `<PDF>.labels.json` and optional `<PDF>.result.json` locally
-without authentication or service calls. Missing results are reference-only;
-unreadable, invalid or unsupported results warn and keep labels viewable. An
-explicitly empty fields object remains comparable. Both source geometries stay
-independent, and all input files remain unchanged.
+fields and exact numbers). When the source is a PDF, `Prepare` safely checks for
+the adjacent `<PDF>.labels.json` and includes valid labels in the same analysis
+session. Missing labels are ignored; unreadable or invalid labels populate
+`warnings` and do not block viewing. The browser runs React; the Go process
+only provides files and data.
 
 The bundled renderer also aligns unlabeled PDF Fields with the label palette and
 compact value/preview style, using field/array blues plus independent confidence

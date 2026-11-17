@@ -8,16 +8,16 @@ not served to the browser.
 ## Current source
 
 - Repository: cu-viewer.
-- Source commit: `4929fc9cb6404cc5e259e9509c2973e32cfe5d16` on `feature/cu-analyze-view`.
+- Source commit: `a6ace11d0ac6df4b0a3272cfe9d5ed54bc5f5974` on `feature/cu-analyze-view`.
 - Frontend package version: `0.0.0` (local preview source, not a published npm dependency).
-- Build command: `npm run build:viewer`, using Node.js 22.23.5 and the existing dependencies; manifests and lockfile are unchanged.
+- Build command: `npm run build:viewer`, using Node.js 24.22.1 and the committed npm lockfile in an isolated build.
 - Imported on: 2026-11-17.
 - Payload: 229 plain files, including the root licenses.
-- Payload index SHA-256: `3d0edc4d0ec40c3974d5ca8e020a0f32cb179aec5773f37086735ae7b70b48f4`.
+- Payload index SHA-256: `bdd7b59cfaeae8547cba62043ddab426dcbe43d545c248fc345c5a8870fe4d63`.
 - Index format: UTF-8 entries sorted by relative POSIX path, each containing the path, NUL, lowercase file SHA-256 and LF. Only served payload files are included, not this README or Go source.
 
 This local preview includes the header-free shell, pointer-transparent temporary
-previews, shared typography/colors, independent object expansion and the optional
+field/source previews, shared typography/colors, independent object expansion and the optional
 azd field-order bridge. Fieldless results default to nonempty Markdown without
 an empty Fields tab. Object previews show their value summary and the union
 bounds of current-page descendant sources. Preview field names use regular
@@ -33,20 +33,21 @@ and compact token-count summaries.
 
 Result uses one paged JSON tree for all input sizes, retaining node expansion,
 collection pages and scroll across Tab/content changes in the same response.
-Replacing source/result/labels resets these in-memory choices. Span titles
-preview their own content's raw Markdown using codePoint/utf16/utf8 offsets
-(codePoint when omitted), with explicit invalid-range and missing-content text.
+Replacing source/result/labels resets these in-memory choices. Span hover/focus
+previews use Fields-style pointed popups showing only their own content's raw
+Markdown value, without offset, length or encoding labels. They use
+codePoint/utf16/utf8 offsets (codePoint when omitted), retain explicit invalid-range
+and missing-content text, stay inside the viewport, and dismiss on Escape or scroll.
 The full-string modal searches the complete displayed JSON literal, counts and
 cycles through case-insensitive literal matches, and supports Enter/Shift+Enter
 and local Ctrl/Command+F. Cancellable sparse indexing and visible-only merged
 highlights preserve virtualization and syntax colors; Copy still uses the
 original value. These Result changes do not alter PDF/labels/Fields/Legend.
 
-Label sessions use the existing Fields tab, not a separate Label tab. The
-`label show` host discovers the adjacent saved result automatically, with `view`
-retained as an alias. Comparable inputs show Field Name, Label Value and Extracted
-Value, including side-by-side array tables by default and whole-array status
-filtering. Labels without comparable results remain a two-column reference view.
+When the analyze command opens `--view` for a PDF, the host discovers an
+adjacent `<PDF>.labels.json` and passes it alongside the current analysis result.
+The existing Fields tab shows Field Name, Label Value and Extracted Value,
+including side-by-side array tables by default and whole-array status filtering.
 The per-array Stacked / Side by side controls temporarily change the layout;
 refreshing or replacing inputs restores side by side without writing preferences.
 
@@ -108,10 +109,11 @@ missing sources are explicitly identified rather than borrowed from the other
 side. Paired tables retain shared columns and synchronized horizontal scrolling.
 
 Label-only missing regions use the label's own PDF dimensions; extraction pixels
-and label inches are not mixed. Optional session warnings explain invalid-result
-fallbacks. Label sessions never use analyzer-preference RPCs. The Go host and
-these complete assets must be updated together; input documents and results are
-not part of this payload.
+and label inches are not mixed. Optional session warnings explain unreadable or
+invalid adjacent labels while keeping the current analysis viewable. Label
+comparison does not expose analyzer-field-order editing. The Go host and these
+complete assets must be updated together; input documents and results are not
+part of this payload.
 
 Label source frames additionally merge adjacent word/punctuation fragments and
 use a thin, outward-offset decoration at small zoom. This does not change raw

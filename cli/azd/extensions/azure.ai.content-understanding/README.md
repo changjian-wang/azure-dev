@@ -213,7 +213,8 @@ azd ai cu analyze invoice.pdf -a prebuilt-invoice --output json --output-file in
 ```
 
 To display one local PDF or supported image beside its complete analysis result,
-add `--view`:
+add `--view`. For PDFs, an adjacent `<PDF>.labels.json` is loaded automatically
+and compared with that analysis:
 
 ```powershell name="Analyze and view a local invoice"
 azd ai cu analyze invoice.pdf --analyzer prebuilt-invoice --view
@@ -223,7 +224,8 @@ The compiled Viewer page is bundled with the extension from
 [cu-viewer-static](cu-viewer-static). Go builds and installed viewing need no
 Node.js, npm, Python, resource download, or Viewer cache. There is no separate
 Viewer update command; updating the static files requires rebuilding the extension.
-Resource preparation failures stop before analysis or browser startup. The command keeps a
+Resource preparation failures stop before analysis or browser startup. Invalid
+or unreadable label sidecars warn and do not block viewing. The command keeps a
 loopback-only service running until `Ctrl+C`; closing the browser tab does not
 stop it. Viewing does not change console or saved-result formats or make another
 CU request. See [local viewing](docs/usage.md#view-a-local-analysis-in-the-browser)
@@ -240,12 +242,23 @@ all nested objects without changing table state or field order.
 Fields Settings uses a compact **Show Confidence** switch and full-width action
 rows with hover and keyboard-focus feedback, including **Reset Field Order**.
 
+When `--view` opens a local PDF, the extension automatically checks for a
+same-directory `<PDF>.labels.json` file (for example,
+`invoice.pdf.labels.json`) and compares it with the analysis. Without labels,
+the Viewer works as usual. Invalid or unreadable labels produce a warning and
+do not block analysis or viewing. Images do not load label sidecars.
+
 PDF Fields without labels share the label view's Material field/array blues,
 compact value boxes, preview styling and independent low-confidence red outlines.
 The red outline indicates confidence, not a comparison error. The optional
 Confidence column and single array table remain; no Label column, matching colors
 or comparison counters are added. Images and other result views keep their
 existing appearance.
+
+In Result, hovering a `spans` array or entry, or focusing its expand button,
+shows a Fields-style pointed popup with the referenced Markdown text only.
+Escape or scrolling dismisses it; the original span offsets and result JSON
+remain unchanged.
 
 Customized field order is saved in azd user settings under the literal
 `extension.installed["azure.ai.content-understanding"].Viewer.fieldOrderByAnalyzer`
@@ -313,54 +326,11 @@ Validation errors identify source line/column locations. Authoring checks locate
 the alias they actually use (for example, `field_schema` when `fieldSchema` is
 empty); `--spec` findings retain locations in the original service-contract body.
 
-## View local labels (offline)
-
-```powershell name="View saved labels without analysis"
-azd ai cu label show invoice.pdf
-```
-
-This opens the PDF with `invoice.pdf.labels.json` and automatically loads an
-adjacent `invoice.pdf.result.json` when present. The complete filename, including
-`.pdf`, is retained; no additional result option is needed. The legacy
-`label view` alias is still supported. No project, endpoint, tenant,
-authentication, upload, or Analyze call is required.
-
-The existing **Fields** tab shows Field Name, Label Value and Extracted Value
-when the first result content declares fields. Without a result or fields it
-keeps two reference-label columns; there is no separate Label tab. An explicitly
-empty fields object represents missing extractions. Values are compared exactly
-by typed field path and array index, without changing either input.
-
-Default scalar/object values are light blue and array values a slightly darker
-blue. Matches are green, different or extra extractions light red, and labels
-without an extraction darker red. Low extracted confidence adds a translucent
-red outline independently of matching. Arrays default to label-left/extracted-right
-tables with a temporary Stacked option. Both layouts synchronize horizontal
-scrolling; side-by-side also synchronizes vertical scrolling, while stacked tables
-retain independent vertical scrolling. The count buttons filter whole correct
-arrays or arrays with at least one error.
-Flyout banners use the same status colors and show both values and available
-extracted confidence. Each side uses its own source geometry.
-
-Labels must be regular UTF-8 JSON with a root `fieldLabels` object, at most
-500,000 bytes. Optional results are bounded to 64 MiB; unreadable, invalid or
-unsupported results produce terminal and page warnings while labels remain
-viewable. PDF, labels and results stay unchanged. Status goes to stderr, Ctrl+C
-stops the local viewer, and `--no-prompt` still honors the explicit viewer.
-Use `--output default` or `--output none`. See [local label viewing](docs/usage.md#view-local-labels).
-
-This requires the paired development extension and complete bundled Viewer;
-existing installed binaries are not automatically replaced. The requested
-`label show` grouping follows this extension's existing entity-group pattern;
-see the general [extension guidelines](../../docs/extensions/extensions-style-guide.md)
-for the broader verb-first recommendation.
-
 ## Command overview
 
 | Command | Purpose |
 | --- | --- |
 | `azd ai cu analyze` | Analyze local files, directories, or HTTPS URLs. |
-| `azd ai cu label show` | View local labels and automatically compare an adjacent saved result, without analysis or authentication. |
 | `azd ai cu analyzer` | List, show, create, copy, delete, validate, and test analyzers. |
 | `azd ai cu analyzer schema create` | Generate an offline starter or suggest fields from a sample. |
 | `azd ai cu defaults` | Read or configure resource-level model-to-deployment defaults. |

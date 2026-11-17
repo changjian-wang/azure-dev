@@ -220,29 +220,26 @@ Service response bodies and authored content remain hidden.
   failures or cancellation return nonzero while retaining completed result
   files and the requested report. Reports never overwrite existing files.
 
-### View local labels
+### Compare adjacent labels in the Viewer
 
-```powershell name="Open a local PDF with reference labels"
-azd ai cu label show invoice.pdf
-```
+The `analyze --view` command automatically checks beside a local PDF for
+`<PDF>.labels.json` (for example, `invoice.pdf.labels.json`) and compares valid
+labels with the analysis it just performed. This is the only CLI entry point
+for label viewing; it uses the normal Analyze flow and does not read a saved
+`.result.json` file. No sidecar means the regular Viewer; an unreadable or
+invalid sidecar produces a warning and the analysis remains viewable.
 
-This local-only command reads `invoice.pdf.labels.json` and automatically loads
-an adjacent `invoice.pdf.result.json` if present. Both names retain `.pdf`.
-No extra result option is needed; `label view` remains a compatibility alias.
-It does not authenticate, resolve an analyzer, upload, or call Azure.
-
-- Provide exactly one local PDF. URLs, directories and unsupported source types
-  are rejected. The paired label file must be regular UTF-8 JSON, contain a
-  `fieldLabels` object, and fit within 500,000 bytes.
+- Provide exactly one local PDF with `--view`. URLs, directories and unsupported
+  source types are rejected before authentication or service calls. Images
+  remain supported for ordinary `--view` but do not load labels.
+- The optional sidecar must be a regular UTF-8 JSON file, contain a
+  `fieldLabels` object, and fit within 500,000 bytes. When the PDF path is a
+  symbolic link, lookup uses the resolved PDF path; the sidecar itself must
+  not be a symbolic link.
 - Fields reads typed `value*`, preserving dates, numbers, objects and array rows.
   When the first content declares fields, it shows Field Name, Label Value and
-  Extracted Value. Missing result or fields keeps two reference columns;
-  `fields: {}` still enables comparison. Full successful envelopes use
-  `result.contents[0].fields`; supported inner results use `contents[0].fields`.
-- Optional results must be regular UTF-8 JSON, at most 64 MiB, with a supported
-  Viewer API version (`2025-11-01` or `2026-06-01-preview`). Unreadable, malformed
-  or unsupported results produce a warning on stderr and in the page, then
-  continue with labels. No replacement result is created.
+  Extracted Value. `fields: {}` still enables comparison. The complete current
+  analysis response is used; label comparison never changes either input.
 - Exact typed paths and array indexes determine matching. Scalar/object defaults
   are light blue, array defaults slightly darker blue, matching values green,
   different or extra extractions light red, and missing extractions darker red.
@@ -266,13 +263,14 @@ It does not authenticate, resolve an analyzer, upload, or call Azure.
   Separate columns, distant sources and intervening fields prevent merging.
   Raw source polygons, hit targets and PDF text stay unchanged.
 - Comparison is read-only. PDF and JSON files remain unchanged, and analyzer
-  preference RPCs are not used.
+  preference RPCs are not used by the Viewer.
 - The bundled viewer runs on loopback until `Ctrl+C`. `--no-prompt` still opens
-  the explicitly requested viewer. Use `--output default` or `--output none`;
-  diagnostics are written to stderr without a JSON result on stdout.
+  the explicitly requested viewer. `--output default`, `--output json` and
+  `--output none` retain their normal Analyze behavior; Viewer diagnostics
+  are written to stderr.
 
-The command is available in the paired development extension and Viewer build;
-it does not update an existing installed extension or older Viewer resources.
+Updating the extension is required for installed binaries to gain sidecar
+detection.
 
 ### View a local analysis in the browser
 
@@ -339,7 +337,7 @@ fields, including table-only layout results, it is hidden and nonempty Markdown
 becomes the default; other available views remain valid fallbacks. Source-table
 requests do not select a hidden Fields tab or create extracted fields.
 
-Pointer previews are transparent to mouse hits and dismiss immediately when
+Field/source previews are transparent to mouse hits and dismiss immediately when
 the pointer leaves the actual field/source region. Clicking keeps selection,
 not a persistent popup; keyboard focus previews and Escape remain available.
 Use results or full-value details to scroll and copy long values. Objects start
@@ -364,6 +362,12 @@ Info replaces Metadata and shows metadata from all contents, usage, infos and
 warnings in a read-only hierarchy. It appears when any of these properties is
 returned, preserves explicit empty values, and provides settings to collapse or
 expand groups. The original response remains unchanged in Result.
+
+Result span previews use Fields-style pointed popups instead of native browser
+tooltips. Hover a `spans` array or entry, or focus its expand button, to see only
+the referenced Markdown text. The popup stays inside the viewport, supports
+Escape and scroll dismissal, and does not change the original offsets, lengths
+or JSON. Unicode encodings and invalid-range warnings remain supported.
 
 Only an actual reorder writes an analyzer override. The partial configuration
 below omits installation metadata that must be preserved:
@@ -649,7 +653,6 @@ for endpoint-only operation.
 | Endpoint without an environment selection, no configured tenant | Looks up the resolved subscription if present; otherwise delegates tenant selection to azd authentication. |
 | No valid azd authentication, even with endpoint and tenant | Authentication is still required; sign in through azd. |
 | Help or version | No authentication or tenant configuration is required. |
-| `label show` (`view` alias) | Local PDF, labels and optional saved result only; no authentication, tenant, endpoint or project is required. |
 
 For guest or cross-tenant access, the signed-in identity must have access through
 the appropriate tenant. A tenant ID does not grant resource permissions, and the

@@ -41,6 +41,8 @@ type Session struct {
 	sourceInfo  fs.FileInfo
 	sourceType  string
 	sourcePath  string
+	labels      json.RawMessage
+	warnings    []string
 	sessionJSON []byte
 	fieldOrders FieldOrderStore
 	listener    net.Listener
@@ -64,11 +66,11 @@ func Prepare(ctx context.Context, input analysis.Input, output io.Writer) (*Sess
 func prepare(
 	ctx context.Context, input analysis.Input, output io.Writer, assets fs.FS,
 ) (*Session, error) {
-	return prepareSource(ctx, input, output, assets, false)
+	return prepareSource(ctx, input, output, assets)
 }
 
 func prepareSource(
-	ctx context.Context, input analysis.Input, output io.Writer, assets fs.FS, pdfOnly bool,
+	ctx context.Context, input analysis.Input, output io.Writer, assets fs.FS,
 ) (_ *Session, resultErr error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -98,9 +100,9 @@ func prepareSource(
 			Suggestion: "Use a supported source. AVIF and HEIF image sequences are not supported.",
 		}
 	}
-	if pdfOnly && contentType != "application/pdf" {
-		return nil, localError(exterrors.CodeViewerSourceInvalid,
-			"Label viewing currently requires a local PDF.", "Use `azd ai cu label show <PDF>`.")
+	labels, warnings, err := loadAdjacentLabels(ctx, input, contentType)
+	if err != nil {
+		return nil, err
 	}
 	if err := validateAssets(assets); err != nil {
 		return nil, err
@@ -119,7 +121,8 @@ func prepareSource(
 	session := &Session{
 		assets: assets, source: file, sourceInfo: info, sourceType: contentType,
 		sourcePath: "source/" + filepath.Base(input.Path),
-		listener:   listener, prefix: "/" + rand.Text() + "/",
+		labels:     labels, warnings: warnings,
+		listener: listener, prefix: "/" + rand.Text() + "/",
 		output: output, open: openBrowser,
 	}
 	session.address = "http://" + listener.Addr().String() + session.prefix
@@ -132,24 +135,21 @@ func prepareSource(
 
 // Show publishes the complete response, opens the browser, and waits for cancellation.
 func (s *Session) Show(ctx context.Context, response json.RawMessage, fieldOrders FieldOrderStore) (resultErr error) {
-	return s.show(ctx, response, nil, fieldOrders, nil)
+	return s.show(ctx, response, fieldOrders)
 }
 
 func (s *Session) show(
-	ctx context.Context, response, labels json.RawMessage, fieldOrders FieldOrderStore, warnings []string,
+	ctx context.Context, response json.RawMessage, fieldOrders FieldOrderStore,
 ) (resultErr error) {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if labels == nil && (!json.Valid(response) || len(bytes.TrimSpace(response)) == 0 ||
-		bytes.TrimSpace(response)[0] != '{') {
+	if !json.Valid(response) || len(bytes.TrimSpace(response)) == 0 ||
+		bytes.TrimSpace(response)[0] != '{' {
 		return localError(exterrors.CodeViewerResultInvalid,
 			"The CU Viewer did not receive a complete analysis response.", "Retry the analysis.")
 	}
 	retry := "Retry the analysis with --view."
-	if labels != nil {
-		retry = "Retry `azd ai cu label show <PDF>`."
-	}
 	if !s.sourceUnchanged() {
 		return localError(exterrors.CodeViewerSourceInvalid,
 			"The source changed before the viewer started.", "Keep the source unchanged and retry the command.")
@@ -163,7 +163,7 @@ func (s *Session) show(
 		Warnings      []string        `json:"warnings,omitempty"`
 	}{
 		Source: "./source/" + url.PathEscape(s.sourceInfo.Name()),
-		Name:   s.sourceInfo.Name(), Result: response, Labels: labels, Warnings: warnings,
+		Name:   s.sourceInfo.Name(), Result: response, Labels: s.labels, Warnings: s.warnings,
 	}
 	s.fieldOrders = fieldOrders
 	if fieldOrders != nil {
@@ -203,6 +203,12 @@ func (s *Session) show(
 		return localError(exterrors.CodeViewerBrowserFailed,
 			"The default browser could not be opened. Local source and saved data were retained.",
 			"Configure a default browser and retry the command.")
+	}
+	for _, warning := range s.warnings {
+		if _, err := fmt.Fprintln(s.output, "Warning:", warning); err != nil {
+			return localError(exterrors.CodeViewerOutputFailed,
+				"The CU Viewer warning could not be written.", "Check the command's diagnostic output destination.")
+		}
 	}
 	if _, err := fmt.Fprintf(s.output, "CU Viewer: %s\nPress Ctrl+C to stop the local viewer.\n", s.address); err != nil {
 		return localError(exterrors.CodeViewerOutputFailed,
