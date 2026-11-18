@@ -8,12 +8,12 @@ not served to the browser.
 ## Current source
 
 - Repository: cu-viewer.
-- Source commit: `daeaa97e95bbb3f1a9ee24821fea930e9e3304ac` on `feature/cu-analyze-view`.
+- Source commit: `7da11868c9e6a583e89e591e3acc20ac955ac0f1` on `feature/cu-analyze-view`.
 - Frontend package version: `0.0.0` (local preview source, not a published npm dependency).
 - Build command: `npm run build:viewer`, using Node.js 24.22.1 and the committed npm lockfile in an isolated build.
-- Imported on: 2026-11-18.
+- Imported on: 2026-11-19.
 - Payload: 229 plain files, including the root licenses.
-- Payload index SHA-256: `343e60eaffeba716a909ca0c2153f7697232d845a0dfdd591073cd2a97ed2758`.
+- Payload index SHA-256: `880446b11f2ea757a53e94754ec992f5cc07804ef54c739b71c8fa8b4d6a9349`.
 - Index format: UTF-8 entries sorted by relative POSIX path, each containing the path, NUL, lowercase file SHA-256 and LF. Only served payload files are included, not this README or Go source.
 
 This local preview includes the header-free shell, pointer-transparent temporary
@@ -58,6 +58,8 @@ summaries use orange. Paired monetary amount and currency sources use a shared
 interaction frame and, when either has low confidence, one shared red outline.
 The outline is hidden while that amount is hovered or selected. Info shows
 analyzer ID, API version and creation time first when returned.
+Fields with `method: "generate"` show a purple sparkle and purple field name
+in both regular and comparison views without changing value or source colors.
 
 Paired array tables share bidirectional horizontal scrolling and restore one
 column position within the available range after tab switches or collapse.
