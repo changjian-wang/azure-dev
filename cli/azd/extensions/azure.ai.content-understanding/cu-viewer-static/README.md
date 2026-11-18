@@ -8,12 +8,12 @@ not served to the browser.
 ## Current source
 
 - Repository: cu-viewer.
-- Source commit: `2b9f9b5843b0201f6e41bb0ba3d3bec3a0b62166` on `feature/cu-analyze-view`.
+- Source commit: `daeaa97e95bbb3f1a9ee24821fea930e9e3304ac` on `feature/cu-analyze-view`.
 - Frontend package version: `0.0.0` (local preview source, not a published npm dependency).
 - Build command: `npm run build:viewer`, using Node.js 24.22.1 and the committed npm lockfile in an isolated build.
-- Imported on: 2026-11-17.
+- Imported on: 2026-11-18.
 - Payload: 229 plain files, including the root licenses.
-- Payload index SHA-256: `448f72bd52dcbd1e0735e9bb6bf51d6347a1f253f7fa04284557eb844e9ae2fb`.
+- Payload index SHA-256: `343e60eaffeba716a909ca0c2153f7697232d845a0dfdd591073cd2a97ed2758`.
 - Index format: UTF-8 entries sorted by relative POSIX path, each containing the path, NUL, lowercase file SHA-256 and LF. Only served payload files are included, not this README or Go source.
 
 This local preview includes the header-free shell, pointer-transparent temporary
@@ -50,8 +50,14 @@ When the analyze command opens `--view` for a PDF, the host discovers an
 adjacent `<PDF>.labels.json` and passes it alongside the current analysis result.
 The existing Fields tab shows Field Name, Label Value and Extracted Value,
 including side-by-side array tables by default and whole-array status filtering.
-The per-array Stacked / Side by side controls temporarily change the layout;
+The per-array Side by side / Stacked controls temporarily change the layout;
 refreshing or replacing inputs restores side by side without writing preferences.
+
+Comparison fields support reordering, and mixed matching and differing object
+summaries use orange. Paired monetary amount and currency sources use a shared
+interaction frame and, when either has low confidence, one shared red outline.
+The outline is hidden while that amount is hovered or selected. Info shows
+analyzer ID, API version and creation time first when returned.
 
 Paired array tables share bidirectional horizontal scrolling and restore one
 column position within the available range after tab switches or collapse.
