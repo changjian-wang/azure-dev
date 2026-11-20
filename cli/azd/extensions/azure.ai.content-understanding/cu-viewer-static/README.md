@@ -8,12 +8,12 @@ not served to the browser.
 ## Current source
 
 - Repository: cu-viewer.
-- Source commit: `1c35438fee8edd1731aef4169da400860233b398` on `feature/cu-analyze-view`.
+- Source commit: `9f9a1c75579293d85af4e3dcc986affb480939ad` on `feature/cu-analyze-view`.
 - Frontend package version: `0.0.0` (local preview source, not a published npm dependency).
 - Build command: `npm run build:viewer`, using Node.js 24.22.1 and the committed npm lockfile in an isolated build.
-- Imported on: 2026-11-19.
+- Imported on: 2026-11-20.
 - Payload: 229 plain files, including the root licenses.
-- Payload index SHA-256: `2f1d29009acbb0c36bdfaed031c5e9e4e4f3282134c3c13bf54287f3dd309314`.
+- Payload index SHA-256: `fe0b393821a993a4a144107ebf4c6771ef2205775d128f39b5173fc844c9dbbb`.
 - Index format: UTF-8 entries sorted by relative POSIX path, each containing the path, NUL, lowercase file SHA-256 and LF. Only served payload files are included, not this README or Go source.
 
 This local preview includes the header-free shell, pointer-transparent temporary
@@ -34,7 +34,9 @@ keep the separators and original JSON.
 
 Result uses one paged JSON tree for all input sizes, retaining node expansion,
 collection pages and scroll across Tab/content changes in the same response.
-Replacing source/result/labels resets these in-memory choices. Span hover/focus
+Replacing source/result/labels resets these in-memory choices. The Result footer
+provides search across collapsed nodes and collection pages, plus bulk expand
+and collapse controls. Span hover/focus
 previews use Fields-style pointed popups showing only their own content's raw
 Markdown value, without offset, length or encoding labels. They use
 codePoint/utf16/utf8 offsets (codePoint when omitted), retain explicit invalid-range
@@ -64,13 +66,17 @@ interaction frame and, when either has low confidence, one shared red outline.
 The outline is hidden while that amount is hovered or selected. Info shows
 analyzer ID, API version and creation time first when returned.
 Returned values with no direct equivalent in the field spans or the same
-content's Markdown use a purple marker and pale blue `#CBEAF1` value fill.
-This is a review hint, not an analyzer `generate` marker or a confidence
-judgment. Missing values use gray italic `Not returned`, without changing
-comparison status or confidence.
+content's Markdown use a pale blue `#CBEAF1` marker and value fill without
+recoloring the field name. This is a review hint, not an analyzer `generate`
+marker or a confidence judgment. Missing values use gray italic `Not labelled`
+on the label side and `Not returned` on the extraction side without changing
+comparison status or confidence. Value hover hints use short lines for
+confidence and source review, with a comparison status only in comparison mode.
 
 Paired array tables share bidirectional horizontal scrolling and restore one
 column position within the available range after tab switches or collapse.
+Both layouts show draggable horizontal scrollbars when the columns overflow
+and reserve no scrollbar space when the tables fit.
 Side-by-side tables also synchronize vertical scrolling to align rows; stacked
 tables retain independent vertical scrolling. Other array groups remain
 independent. The fixed `#` corner stays visible above scrolling column headers
@@ -90,9 +96,10 @@ the red border, not an empty white state. PDF Fields interaction strokes restore
 `#8063B5`/`#5B21B6` and leave 3 CSS px around confidence edges, including their
 antialiasing. Raw source geometry and hit targets are unchanged. Flyout headings
 and arrows use the old purple `#E5DAFF` with `#4C1D95` heading text, independent
-of value state. Returned PDF Fields values in tooltips use the same fill as their
-Fields values, including object summaries and cells. Labels and missing
-placeholders stay plain, and tooltip values do not receive confidence outlines.
+of value state. In comparison previews, returned extraction values use the same
+fill as their Fields values, including object summaries and cells. Unlabeled
+PDF previews, label values, and missing placeholders stay plain, and preview
+values do not receive confidence outlines.
 Single-value previews retain their adaptive width, 12.5px text and spacing.
 Low-score badges retain `#FFDADD`/`#9B1C1C`, and returned confidence stays visible
 when outlines are disabled. No UI dependency is added.
